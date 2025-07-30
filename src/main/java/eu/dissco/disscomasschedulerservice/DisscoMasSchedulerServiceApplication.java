@@ -1,4 +1,4 @@
-package eu.dissco.core.disscomasschedulerservice;
+package eu.dissco.disscomasschedulerservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

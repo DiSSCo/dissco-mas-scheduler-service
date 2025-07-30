@@ -9,7 +9,7 @@
     <version>3.5.4</version>
     <relativePath/> <!-- lookup parent from repository -->
   </parent>
-  <groupId>eu.dissco.core</groupId>
+  <groupId>eu.dissco</groupId>
   <artifactId>dissco-mas-scheduler-service</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <name>dissco-mas-scheduler-service</name>
