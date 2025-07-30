@@ -14,21 +14,13 @@
   <version>0.0.1-SNAPSHOT</version>
   <name>dissco-mas-scheduler-service</name>
   <description>dissco-mas-scheduler-service</description>
-  <url/>
-  <licenses>
-    <license/>
-  </licenses>
-  <developers>
-    <developer/>
-  </developers>
-  <scm>
-    <connection/>
-    <developerConnection/>
-    <tag/>
-    <url/>
-  </scm>
   <properties>
     <java.version>21</java.version>
+    <sonar.coverage.jacoco.xmlReportPaths>
+      ../app-it/target/site/jacoco-aggregate/jacoco.xml
+    </sonar.coverage.jacoco.xmlReportPaths>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+    <sonar.organization>dissco</sonar.organization>
   </properties>
   <dependencies>
     <dependency>
@@ -48,6 +40,38 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+            <id>prepare-agent</id>
+          </execution>
+          <execution>
+            <goals>
+              <goal>prepare-agent-integration</goal>
+            </goals>
+            <id>prepare-agent-integration</id>
+          </execution>
+          <execution>
+            <goals>
+              <goal>report</goal>
+            </goals>
+            <id>report</id>
+            <phase>prepare-package</phase>
+          </execution>
+          <execution>
+            <goals>
+              <goal>report-integration</goal>
+            </goals>
+            <id>report-integration</id>
+          </execution>
+        </executions>
+        <groupId>org.jacoco</groupId>
+        <version>0.8.13</version>
       </plugin>
     </plugins>
   </build>
