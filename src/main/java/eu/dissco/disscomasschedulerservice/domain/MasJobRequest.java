@@ -1,12 +1,13 @@
 package eu.dissco.disscomasschedulerservice.domain;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.List;
+import eu.dissco.disscomasschedulerservice.database.jooq.enums.MjrTargetType;
 
 public record MasJobRequest(
-    List<String> masIds,
-    JsonNode target,
-    boolean batching
+    String masId,
+    JsonNode targetObject,
+    boolean batching,
+    String agentId
 ) {
 
 }
