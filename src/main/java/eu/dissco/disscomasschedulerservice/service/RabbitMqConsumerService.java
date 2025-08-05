@@ -1,6 +1,15 @@
 package eu.dissco.disscomasschedulerservice.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.dissco.disscomasschedulerservice.Profiles;
+import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
+import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
+import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
+import jakarta.json.Json;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -14,8 +23,23 @@ import org.springframework.stereotype.Service;
 @AllArgsConstructor
 public class RabbitMqConsumerService {
 
-  @RabbitListener(queues = {"rabbitmq.queue-name"}, containerFactory = "consumerBatchContainerFactory")
-  public void getMessages(@Payload List<String> messages){
+  private final ObjectMapper mapper;
+  private final RabbitMqPublisherService rabbitMqPublisherService;
+  private final MasSchedulerService masSchedulerService;
+
+  @RabbitListener(queues = {
+      "rabbitmq.queue-name"}, containerFactory = "consumerBatchContainerFactory")
+  public void getMessages(@Payload List<String> messages) throws PidCreationException {
+    var events = messages.stream().map(message -> {
+          try {
+            return mapper.readValue(message, MasJobRequest.class);
+          } catch (JsonProcessingException e) {
+            log.error("Failed to parse event message", e);
+            rabbitMqPublisherService.deadLetterRaw(message);
+            return null;
+          }
+        }).filter(Objects::nonNull).collect(Collectors.toSet());
+    masSchedulerService.scheduleMass(events);
 
   }
 

@@ -14,11 +14,7 @@ public class RabbitMqProperties {
   @Positive
   private int batchSize = 500;
   @NotBlank
-  private String exchangeName = "mas-scheduler-exchange";
-  @NotBlank
-  private String routingKeyName = "mas-scheduler";
-  @NotBlank
-  private String queueName = "mas-scheduler-queue";
+  private String masExchangeName = "mas-exchange";
   @NotBlank
   private String dlqExchangeName = "mas-scheduler-exchange-dlq";
   @NotBlank

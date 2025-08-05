@@ -18,6 +18,7 @@ import eu.dissco.disscomasschedulerservice.web.HandleComponent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class MasSchedulerService {
   private final HandleComponent handleComponent;
 
 
-  public void scheduleMass(List<MasJobRequest> masRequests) throws PidCreationException {
+  public void scheduleMass(Set<MasJobRequest> masRequests) throws PidCreationException {
     var uniqueMasIds = masRequests.stream().map(MasJobRequest::masId).collect(Collectors.toSet());
     var masMap = masRepository.getMasRecords(uniqueMasIds).stream()
         .collect(Collectors.toMap(MachineAnnotationService::getId, Function.identity()));
@@ -51,7 +52,7 @@ public class MasSchedulerService {
       var mas = masMap.get(masRequest.masId());
       try {
         var masTarget = new MasTarget(masRequest.targetObject(), masJobRecord.jobId(), masRequest.batching());
-        publisherService.sendObjectToQueue(mas.getOdsTopicName(), masTarget);
+        publisherService.publishMasJob(mas.getOdsTopicName(), masTarget);
       } catch (JsonProcessingException e) {
         log.error("Failed to send masRecord: {}  to rabbitMQ", mas.getId());
         failedMasJobs.add(masJobRecord.jobId());
