@@ -1,10 +1,10 @@
 package eu.dissco.disscomasschedulerservice.properties;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
-import jakarta.validation.constraints.Positive;
 
 @Data
 @Validated

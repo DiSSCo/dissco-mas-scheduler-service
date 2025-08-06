@@ -6,10 +6,8 @@ package eu.dissco.disscomasschedulerservice.database.jooq;
 
 import eu.dissco.disscomasschedulerservice.database.jooq.tables.MachineAnnotationService;
 import eu.dissco.disscomasschedulerservice.database.jooq.tables.MasJobRecord;
-
 import java.util.Arrays;
 import java.util.List;
-
 import org.jooq.Catalog;
 import org.jooq.Table;
 import org.jooq.impl.SchemaImpl;

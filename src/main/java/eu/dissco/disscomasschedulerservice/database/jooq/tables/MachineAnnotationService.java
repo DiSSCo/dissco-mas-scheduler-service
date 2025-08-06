@@ -7,10 +7,8 @@ package eu.dissco.disscomasschedulerservice.database.jooq.tables;
 import eu.dissco.disscomasschedulerservice.database.jooq.Keys;
 import eu.dissco.disscomasschedulerservice.database.jooq.Public;
 import eu.dissco.disscomasschedulerservice.database.jooq.tables.records.MachineAnnotationServiceRecord;
-
 import java.time.Instant;
 import java.util.Collection;
-
 import org.jooq.Condition;
 import org.jooq.Field;
 import org.jooq.JSONB;

@@ -1,5 +1,6 @@
 package eu.dissco.disscomasschedulerservice.configuration;
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.deser.std.DateDeserializers.DateDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -8,7 +9,6 @@ import java.time.Instant;
 import java.util.Date;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 @Configuration
 public class ApplicationConfiguration {

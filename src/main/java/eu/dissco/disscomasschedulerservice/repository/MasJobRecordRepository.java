@@ -3,7 +3,6 @@ package eu.dissco.disscomasschedulerservice.repository;
 import static eu.dissco.disscomasschedulerservice.database.jooq.Tables.MAS_JOB_RECORD;
 import static eu.dissco.disscomasschedulerservice.repository.RepositoryUtils.DOI_STRING;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.dissco.disscomasschedulerservice.database.jooq.enums.JobState;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRecord;
 import java.time.Instant;
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Repository;
 public class MasJobRecordRepository {
 
   private final DSLContext context;
-  private final ObjectMapper mapper;
 
   public void markMasJobRecordsAsFailed(List<String> ids) {
     context.update(MAS_JOB_RECORD)

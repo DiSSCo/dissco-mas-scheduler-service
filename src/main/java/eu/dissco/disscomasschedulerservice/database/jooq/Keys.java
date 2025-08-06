@@ -8,7 +8,6 @@ import eu.dissco.disscomasschedulerservice.database.jooq.tables.MachineAnnotatio
 import eu.dissco.disscomasschedulerservice.database.jooq.tables.MasJobRecord;
 import eu.dissco.disscomasschedulerservice.database.jooq.tables.records.MachineAnnotationServiceRecord;
 import eu.dissco.disscomasschedulerservice.database.jooq.tables.records.MasJobRecordRecord;
-
 import org.jooq.TableField;
 import org.jooq.UniqueKey;
 import org.jooq.impl.DSL;

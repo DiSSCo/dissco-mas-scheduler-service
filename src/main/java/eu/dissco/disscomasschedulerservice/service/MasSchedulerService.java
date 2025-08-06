@@ -63,12 +63,15 @@ public class MasSchedulerService {
     }
   }
 
-  private Map<String, MasJobRecord> createMasJobRecord(List<MasJobRequest> requests,
+  private Map<String, MasJobRecord> createMasJobRecord(List<MasJobRequest> filteredRequests,
       Map<String, MachineAnnotationService> masMap) throws PidCreationException, InvalidRequestException {
-    log.info("Requesting {} handles from API", requests.size());
-    var handles = handleComponent.postHandle(requests.size());
+    if (filteredRequests.isEmpty()){
+      return Map.of();
+    }
+    log.info("Requesting {} handles from API", filteredRequests.size());
+    var handles = handleComponent.postHandle(filteredRequests.size());
     var handleItr = handles.iterator();
-    var masJobRecordList = requests.stream().map(
+    var masJobRecordList = filteredRequests.stream().map(
         masRequest -> new MasJobRecord(
             handleItr.next(),
             JobState.SCHEDULED,
@@ -95,6 +98,8 @@ public class MasSchedulerService {
     throw new InvalidRequestException("Unrecognized target @type" + type);
   }
 
+  // We need a temp key to link the job request to the mas job record we just created
+  // Unfortunately we can't use the mas job record id because that's not in the request
   private static String getMasJobRecordKey(String targetId, String masId) {
     return targetId + "-" + masId;
   }

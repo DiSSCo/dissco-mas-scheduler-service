@@ -4,9 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.dissco.disscomasschedulerservice.Profiles;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
-import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
 import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
-import jakarta.json.Json;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -40,7 +38,6 @@ public class RabbitMqConsumerService {
           }
         }).filter(Objects::nonNull).collect(Collectors.toSet());
     masSchedulerService.scheduleMass(events);
-
   }
 
 }
