@@ -22,6 +22,11 @@
     <mockito-inline.version>5.2.0</mockito-inline.version>
     <ok-http.version>4.12.0</ok-http.version>
     <targetPackage>eu.dissco.backend.schema</targetPackage>
+    <sonar.coverage.jacoco.xmlReportPaths>
+      ../app-it/target/site/jacoco-aggregate/jacoco.xml
+    </sonar.coverage.jacoco.xmlReportPaths>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+    <sonar.organization>dissco</sonar.organization>
   </properties>
   <dependencies>
     <dependency>
@@ -194,6 +199,38 @@
             <version>${glassfish-jaxb.version}</version>
           </dependency>
         </dependencies>
+      </plugin>
+      <plugin>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+            <id>prepare-agent</id>
+          </execution>
+          <execution>
+            <goals>
+              <goal>prepare-agent-integration</goal>
+            </goals>
+            <id>prepare-agent-integration</id>
+          </execution>
+          <execution>
+            <goals>
+              <goal>report</goal>
+            </goals>
+            <id>report</id>
+            <phase>prepare-package</phase>
+          </execution>
+          <execution>
+            <goals>
+              <goal>report-integration</goal>
+            </goals>
+            <id>report-integration</id>
+          </execution>
+        </executions>
+        <groupId>org.jacoco</groupId>
+        <version>0.8.13</version>
       </plugin>
     </plugins>
   </build>
