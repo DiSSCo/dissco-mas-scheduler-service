@@ -4,12 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
 import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
 class RestResponseEntityExceptionHandlerTest {
 
   private RestResponseEntityExceptionHandler exceptionHandler;
+
+  @BeforeEach
+  void setup() {
+    exceptionHandler = new RestResponseEntityExceptionHandler();
+  }
 
   @Test
   void testPidCreationExceptionMessage() {
