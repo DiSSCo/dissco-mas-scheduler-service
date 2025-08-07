@@ -107,6 +107,9 @@ public class MasSchedulerService {
   private static boolean checkIfMasCompliesToTarget(JsonNode jsonNode,
       MachineAnnotationService machineAnnotationService) {
     var filters = machineAnnotationService.getOdsHasTargetDigitalObjectFilter();
+    if (filters == null){
+      return true;
+    }
     var fields = filters.getAdditionalProperties();
     var complies = true;
     for (var stringObjectEntry : fields.entrySet()) {

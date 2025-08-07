@@ -165,7 +165,7 @@ public class TestUtils {
             List.of("https://doi.org/21.T11148/bbad8c4e101e8af01115"));
   }
 
-  private static OdsHasTargetDigitalObjectFilter givenFiltersDigitalSpecimen() {
+  public static OdsHasTargetDigitalObjectFilter givenFiltersDigitalSpecimen() {
     return new OdsHasTargetDigitalObjectFilter()
         .withAdditionalProperty("$['dcterms:license']",
             List.of("http://creativecommons.org/licenses/by/4.0/legalcode",

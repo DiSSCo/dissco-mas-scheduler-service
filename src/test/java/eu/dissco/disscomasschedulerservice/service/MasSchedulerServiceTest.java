@@ -11,25 +11,35 @@ import static eu.dissco.disscomasschedulerservice.TestUtils.TARGET_ID_ALT;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenDigitalMedia;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenDigitalSpecimen;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenFiltersDigitalMedia;
+import static eu.dissco.disscomasschedulerservice.TestUtils.givenFiltersDigitalSpecimen;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenMas;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenMasJobRequest;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import eu.dissco.backend.schema.OdsHasTargetDigitalObjectFilter;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
 import eu.dissco.disscomasschedulerservice.domain.MasTarget;
+import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
 import eu.dissco.disscomasschedulerservice.repository.MasJobRecordRepository;
 import eu.dissco.disscomasschedulerservice.repository.MasRepository;
 import eu.dissco.disscomasschedulerservice.web.HandleComponent;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -49,7 +59,8 @@ class MasSchedulerServiceTest {
 
   @BeforeEach
   void init() {
-    masSchedulerService = new MasSchedulerService(masRepository, masJobRecordRepository, publisherService, handleComponent);
+    masSchedulerService = new MasSchedulerService(masRepository, masJobRecordRepository,
+        publisherService, handleComponent);
   }
 
   @Test
@@ -61,8 +72,9 @@ class MasSchedulerServiceTest {
         givenMasJobRequest(MAS_ID_ALT, TARGET_ID),
         givenMasJobRequest(MAS_ID_ALT, TARGET_ID_ALT)
     );
-    given(masRepository.getMasRecords(Set.of(MAS_ID, MAS_ID_ALT))).willReturn(List.of(givenMas(MAS_ID), givenMas(
-        MAS_ID_ALT)));
+    given(masRepository.getMasRecords(Set.of(MAS_ID, MAS_ID_ALT))).willReturn(
+        List.of(givenMas(MAS_ID), givenMas(
+            MAS_ID_ALT)));
     var handles = List.of(
         HANDLE + "/job-1",
         HANDLE + "/job-2",
@@ -80,27 +92,38 @@ class MasSchedulerServiceTest {
     then(masJobRecordRepository).should().createNewMasJobRecord(anyList());
   }
 
-  @Test
-  void testScheduleMasDoesntComply() throws Exception {
+  @ParameterizedTest
+  @MethodSource("provideFilters")
+  void testScheduleMasDoesntComply(OdsHasTargetDigitalObjectFilter filters) throws Exception {
     // Given
     var masRequest = new MasJobRequest(
         MAS_ID,
         MAPPER.readTree("""
-             {
-            "@id":"https://doi.org/20.5000.1025/111-222-333",
-            "@type": "ods:DigitalSpecimen",
-            "ods:version": 1,
-            "ods:status": "Active",
-            "dcterms:modified": "2015/09/02",
-            "dcterms:created": "2025-01-28T13:08:42.659Z",
-            "ods:fdoType": "https://doi.org/21.T11148/894b1e6cad57e921764e",
-            "ods:midsLevel": 1,
-            "ods:normalisedPhysicalSpecimenID": "https://data.biodiversitydata.nl/naturalis/specimen/ZMA.INS.1003070",
-            "ods:physicalSpecimenID": "https://data.biodiversitydata.nl/naturalis/specimen/ZMA.INS.1003070",
-            "dcterms:license": "http://creativecommons.org/licenses/by-nc/4.0/",
-            "ods:topicDiscipline": "Botany"
-        }"""), false, AGENT_ID);
-    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
+            {
+              "@id": "https://doi.org/20.5000.1025/111-222-333",
+              "@type": "ods:DigitalSpecimen",
+              "ods:version": 1,
+              "ods:status": "Active",
+              "dcterms:modified": "2015/09/02",
+              "dcterms:created": "2025-01-28T13:08:42.659Z",
+              "ods:fdoType": "https://doi.org/21.T11148/894b1e6cad57e921764e",
+              "ods:midsLevel": 1,
+              "ods:normalisedPhysicalSpecimenID": "https://data.biodiversitydata.nl/naturalis/specimen/ZMA.INS.1003070",
+              "ods:physicalSpecimenID": "https://data.biodiversitydata.nl/naturalis/specimen/ZMA.INS.1003070",
+              "dcterms:license": "http://creativecommons.org/licenses/by-nc/4.0/",
+              "ods:topicDiscipline": "Botany",
+              "ods:hasEvents": [
+                {
+                  "eco:protocolDescriptions":["Butterfly net"],
+                  "ods:hasLocation": {
+                    "dwc:country": "Scotland"
+                  }
+                }
+              ]
+            }
+            """), false, AGENT_ID);
+    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(
+        List.of(givenMas(MAS_ID, false, filters)));
 
     // When
     masSchedulerService.scheduleMass(Set.of(masRequest));
@@ -149,10 +172,67 @@ class MasSchedulerServiceTest {
     // Then
     then(publisherService).should().publishMasJob(MAS_ID, expected);
     then(masJobRecordRepository).should().createNewMasJobRecord(anyList());
-
   }
 
+  @Test
+  void testScheduleMasFailed() throws Exception {
+    // Given
+    var masRequest = givenMasJobRequest();
+    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
+    given(handleComponent.postHandle(1)).willReturn(List.of(JOB_ID));
+    doThrow(JsonProcessingException.class).when(publisherService).publishMasJob(any(), any());
 
+    // When
+    masSchedulerService.scheduleMass(Set.of(masRequest));
+
+    // Then
+    then(masJobRecordRepository).should().markMasJobRecordsAsFailed(List.of(JOB_ID));
+  }
+
+  @Test
+  void testScheduleInvalidType() throws Exception {
+    // Given
+    var masRequest = new MasJobRequest(
+        MAS_ID, MAPPER.readTree("""
+        {
+          "@id": "https://doi.org/10.3535/AAA-BBB-CCC",
+          "@type": "ods:Annotation"
+        }
+        
+        """), false, AGENT_ID
+    );
+    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)
+        .withOdsHasTargetDigitalObjectFilter(null)));
+    given(handleComponent.postHandle(1)).willReturn(List.of(JOB_ID));
+
+    // When
+    assertThrowsExactly(InvalidRequestException.class,
+        () -> masSchedulerService.scheduleMass(Set.of(masRequest)));
+  }
+
+  private static Stream<Arguments> provideFilters() {
+    return Stream.of(
+        Arguments.of(givenFiltersDigitalSpecimen()),
+        Arguments.of(
+            new OdsHasTargetDigitalObjectFilter()
+                .withAdditionalProperty("$['ods:fdoType']", List.of("Some Test value"))),
+        Arguments.of(new OdsHasTargetDigitalObjectFilter()
+            .withAdditionalProperty("$['ods:format']", List.of("application/json"))),
+        Arguments.of(new OdsHasTargetDigitalObjectFilter()
+            .withAdditionalProperty(
+                "$['ods:hasEvents'][*]['ods:hasLocation']['dwc:country']",
+                List.of("The Netherlands", "Belgium"))),
+        Arguments.of(new OdsHasTargetDigitalObjectFilter()
+            .withAdditionalProperty(
+                "$['ods:hasEvents'][*]['eco:protocolDescriptions']",
+                List.of("Diopsis camera"))),
+        Arguments.of(new OdsHasTargetDigitalObjectFilter()
+            .withAdditionalProperty("$['ods:hasEvents'][*]['dwc:city']",
+                List.of("Rotterdam", "Amsterdam"))),
+        Arguments.of(new OdsHasTargetDigitalObjectFilter()
+            .withAdditionalProperty("$['omg:someRandomNonExistingKey']", List.of("Nothing")))
+    );
+  }
 
 
 }

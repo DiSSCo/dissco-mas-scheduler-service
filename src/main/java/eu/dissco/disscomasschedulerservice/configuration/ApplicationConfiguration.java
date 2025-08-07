@@ -12,7 +12,6 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ApplicationConfiguration {
-  public static final String DATE_STRING = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
   @Bean
   public ObjectMapper objectMapper() {
