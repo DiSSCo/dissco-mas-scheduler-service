@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.PathNotFoundException;
 import eu.dissco.backend.schema.MachineAnnotationService;
+import eu.dissco.disscomasschedulerservice.Profiles;
 import eu.dissco.disscomasschedulerservice.database.jooq.enums.JobState;
 import eu.dissco.disscomasschedulerservice.database.jooq.enums.MjrTargetType;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRecord;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -43,6 +45,7 @@ public class MasSchedulerService {
   private final HandleComponent handleComponent;
   private final DigitalSpecimenRepository specimenRepository;
   private final DigitalMediaRepository mediaRepository;
+  private final Environment environment;
 
   public void scheduleMass(Set<MasJobRequest> masRequests) throws PidCreationException {
     var uniqueMasIds = masRequests.stream().map(MasJobRequest::masId).collect(Collectors.toSet());
@@ -59,9 +62,10 @@ public class MasSchedulerService {
             masRequest.agentId(),
             masRequest.targetType()
         ))
+        .filter(masRequest -> masMap.containsKey(masRequest.masId()))
+        .filter(masRequest -> checkIfBatchingComplies(masRequest, masMap.get(masRequest.masId())))
         .filter(masRequest -> checkIfMasCompliesToTarget(masRequest.targetObject(),
             masMap.get(masRequest.masId())))
-        .filter(masRequest -> checkIfBatchingComplies(masRequest, masMap.get(masRequest.masId())))
         .toList();
     var masJobRecordMap = createMasJobRecords(filteredRequests, masMap);
     var failedMasJobs = new ArrayList<String>();
@@ -101,8 +105,11 @@ public class MasSchedulerService {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  private static void verifyValidMas(Set<String> uniqueMasIds,
+  private void verifyValidMas(Set<String> uniqueMasIds,
       Map<String, MachineAnnotationService> masMap) {
+    if (!environment.matchesProfiles(Profiles.WEB)) {
+      return;
+    }
     if (uniqueMasIds.size() > masMap.size()) {
       var missingMas = uniqueMasIds.stream().filter(masId -> !masMap.containsKey(masId)).collect(
           Collectors.toSet());
@@ -188,6 +195,10 @@ public class MasSchedulerService {
       MachineAnnotationService mas) {
     if (masJobRequest.batching() && Boolean.FALSE.equals(mas.getOdsBatchingPermitted())) {
       log.warn("MAS {} is not batchable, but it has been requested to run as a batch", mas.getId());
+      if (environment.matchesProfiles(Profiles.WEB)) {
+        throw new InvalidRequestException(
+            "MAS is not batchable, but it has been requested to run as a batch");
+      }
       return false;
     }
     return true;
