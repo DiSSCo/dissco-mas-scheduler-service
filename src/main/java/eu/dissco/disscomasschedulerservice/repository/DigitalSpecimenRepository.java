@@ -29,6 +29,7 @@ public class DigitalSpecimenRepository {
     return context.select(DIGITAL_SPECIMEN.asterisk())
         .from(DIGITAL_SPECIMEN)
         .where(DIGITAL_SPECIMEN.ID.in(targetIds))
+        .and(DIGITAL_SPECIMEN.DELETED.isNull())
         .fetchMap(DIGITAL_SPECIMEN.ID, this::mapToDigitalSpecimen);
   }
 

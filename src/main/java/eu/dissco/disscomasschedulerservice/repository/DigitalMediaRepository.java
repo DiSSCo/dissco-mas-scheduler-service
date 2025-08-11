@@ -30,6 +30,7 @@ public class DigitalMediaRepository {
     return context.select(DIGITAL_MEDIA_OBJECT.asterisk())
         .from(DIGITAL_MEDIA_OBJECT)
         .where(DIGITAL_MEDIA_OBJECT.ID.in(targetIds))
+        .and(DIGITAL_MEDIA_OBJECT.DELETED.isNull())
         .fetchMap(DIGITAL_MEDIA_OBJECT.ID, this::mapToDigitalMedia);
   }
 

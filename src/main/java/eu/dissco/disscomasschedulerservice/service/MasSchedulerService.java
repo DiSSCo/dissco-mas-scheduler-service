@@ -62,6 +62,7 @@ public class MasSchedulerService {
             masRequest.agentId(),
             masRequest.targetType()
         ))
+        .filter(masRequest -> targetObjectMap.containsKey(masRequest.targetId()))
         .filter(masRequest -> masMap.containsKey(masRequest.masId()))
         .filter(masRequest -> checkIfBatchingComplies(masRequest, masMap.get(masRequest.masId())))
         .filter(masRequest -> checkIfMasCompliesToTarget(masRequest.targetObject(),
@@ -100,9 +101,21 @@ public class MasSchedulerService {
         .collect(Collectors.toSet());
     var targetMapSpecimens = new HashMap<>(specimenRepository.getSpecimens(specimenTargets));
     var targetMapMedia = new HashMap<>(mediaRepository.getMedia(mediaTargets));
+    verifyTargetExists(specimenTargets, targetMapSpecimens, "specimen");
+    verifyTargetExists(mediaTargets, targetMapMedia, "media");
     return Stream.concat(targetMapSpecimens.entrySet().stream(), targetMapMedia.entrySet().stream())
         .filter(e -> e.getValue() != null)
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  private void verifyTargetExists(Set<String> targetIds, Map<String, JsonNode> targetMap,
+      String targetType) {
+    if (targetIds.size() > targetMap.size()) {
+      log.error("Unable to resolve all {}. Verify targets are not tombstoned", targetType);
+      if (environment.matchesProfiles(Profiles.WEB)) {
+        throw new InvalidRequestException("Unable to resolve all targets");
+      }
+    }
   }
 
   private void verifyValidMas(Set<String> uniqueMasIds,

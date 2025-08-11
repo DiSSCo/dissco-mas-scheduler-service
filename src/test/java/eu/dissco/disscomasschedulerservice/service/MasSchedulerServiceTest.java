@@ -156,6 +156,33 @@ class MasSchedulerServiceTest {
   }
 
   @Test
+  void testScheduleTargetDoesntExistAsync() throws Exception {
+    // Given
+    var masRequest = givenMasJobRequest();
+    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
+
+    // When
+    masSchedulerService.scheduleMass(Set.of(masRequest));
+
+    // Then
+    then(handleComponent).shouldHaveNoInteractions();
+    then(masJobRecordRepository).shouldHaveNoInteractions();
+    then(publisherService).shouldHaveNoInteractions();
+  }
+
+  @Test
+  void testScheduleTargetDoesntExistWeb() {
+    // Given
+    var masRequest = givenMasJobRequest();
+    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
+    given(environment.matchesProfiles(Profiles.WEB)).willReturn(true);
+
+    // When / then
+    assertThrowsExactly(InvalidRequestException.class,
+        () -> masSchedulerService.scheduleMass(Set.of(masRequest)));
+  }
+
+  @Test
   void testScheduleBatchingDoesntComplyAsync() throws Exception {
     // Given
     var masRequest = new MasJobRequest(
@@ -164,6 +191,7 @@ class MasSchedulerServiceTest {
     given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
         TARGET_ID, givenDigitalSpecimen(TARGET_ID)
     ));
+    given(environment.matchesProfiles(Profiles.WEB)).willReturn(false);
 
     // When
     masSchedulerService.scheduleMass(Set.of(masRequest));
