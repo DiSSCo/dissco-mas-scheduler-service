@@ -4,6 +4,8 @@
 package eu.dissco.disscomasschedulerservice.database.jooq;
 
 
+import eu.dissco.disscomasschedulerservice.database.jooq.tables.DigitalMediaObject;
+import eu.dissco.disscomasschedulerservice.database.jooq.tables.DigitalSpecimen;
 import eu.dissco.disscomasschedulerservice.database.jooq.tables.MachineAnnotationService;
 import eu.dissco.disscomasschedulerservice.database.jooq.tables.MasJobRecord;
 import java.util.Arrays;
@@ -25,6 +27,16 @@ public class Public extends SchemaImpl {
      * The reference instance of <code>public</code>
      */
     public static final Public PUBLIC = new Public();
+
+  /**
+   * The table <code>public.digital_media_object</code>.
+   */
+  public final DigitalMediaObject DIGITAL_MEDIA_OBJECT = DigitalMediaObject.DIGITAL_MEDIA_OBJECT;
+
+  /**
+   * The table <code>public.digital_specimen</code>.
+   */
+  public final DigitalSpecimen DIGITAL_SPECIMEN = DigitalSpecimen.DIGITAL_SPECIMEN;
 
     /**
      * The table <code>public.machine_annotation_service</code>.
@@ -52,6 +64,8 @@ public class Public extends SchemaImpl {
     @Override
     public final List<Table<?>> getTables() {
         return Arrays.asList(
+            DigitalMediaObject.DIGITAL_MEDIA_OBJECT,
+            DigitalSpecimen.DIGITAL_SPECIMEN,
             MachineAnnotationService.MACHINE_ANNOTATION_SERVICE,
             MasJobRecord.MAS_JOB_RECORD
         );

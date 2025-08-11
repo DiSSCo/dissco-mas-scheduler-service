@@ -1,24 +1,33 @@
 package eu.dissco.disscomasschedulerservice;
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.deser.std.DateDeserializers.DateDeserializer;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.DateSerializer;
 import eu.dissco.backend.schema.Agent;
 import eu.dissco.backend.schema.Agent.Type;
 import eu.dissco.backend.schema.MachineAnnotationService;
 import eu.dissco.backend.schema.MachineAnnotationService.OdsStatus;
 import eu.dissco.backend.schema.OdsHasTargetDigitalObjectFilter;
 import eu.dissco.backend.schema.SchemaContactPoint;
+import eu.dissco.disscomasschedulerservice.configuration.InstantDeserializer;
+import eu.dissco.disscomasschedulerservice.configuration.InstantSerializer;
+import eu.dissco.disscomasschedulerservice.database.jooq.enums.MjrTargetType;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
 import eu.dissco.disscomasschedulerservice.domain.MasTarget;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
 public class TestUtils {
 
-  public static final ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
+  public static final ObjectMapper MAPPER;
   public static final Instant CREATED = Instant.parse("2022-11-01T09:59:24.00Z");
   public static final String PREFIX = "20.5000.1025";
   public static final String HANDLE = "https://hdl.handle.net/" + PREFIX;
@@ -32,16 +41,35 @@ public class TestUtils {
 
   public static final int TTL_DEFAULT = 86400;
 
-  public static MasJobRequest givenMasJobRequest() throws JsonProcessingException {
+  static {
+    var mapper = new ObjectMapper().findAndRegisterModules();
+    SimpleModule dateModule = new SimpleModule();
+    dateModule.addSerializer(Date.class, new DateSerializer());
+    dateModule.addDeserializer(Date.class, new DateDeserializer());
+    dateModule.addSerializer(Instant.class, new InstantSerializer());
+    dateModule.addDeserializer(Instant.class, new InstantDeserializer());
+    mapper.registerModule(dateModule);
+    mapper.setSerializationInclusion(Include.NON_NULL);
+    MAPPER = mapper;
+  }
+
+
+  public static DateTimeFormatter givenDateTimeFormatter() {
+    return DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").withZone(ZoneOffset.UTC);
+  }
+
+
+  public static MasJobRequest givenMasJobRequest() {
     return givenMasJobRequest(MAS_ID, TARGET_ID);
   }
 
-  public static MasJobRequest givenMasJobRequest(String masId, String targetId) throws JsonProcessingException {
+  public static MasJobRequest givenMasJobRequest(String masId, String targetId) {
     return new MasJobRequest(
         masId,
-        givenDigitalSpecimen(targetId),
+        targetId,
         false,
-        AGENT_ID
+        AGENT_ID,
+        MjrTargetType.DIGITAL_SPECIMEN
     );
   }
 
@@ -66,17 +94,16 @@ public class TestUtils {
         {
             "@id":"%s",
             "@type": "ods:DigitalSpecimen",
-            "ods:version": 1,
             "ods:status": "Active",
-            "dcterms:modified": "2015/09/02",
-            "dcterms:created": "2025-01-28T13:08:42.659Z",
             "ods:fdoType": "https://doi.org/21.T11148/894b1e6cad57e921764e",
+            "ods:version": 1,
             "ods:midsLevel": 1,
-            "ods:normalisedPhysicalSpecimenID": "https://data.biodiversitydata.nl/naturalis/specimen/ZMA.INS.1003070",
-            "ods:physicalSpecimenID": "https://data.biodiversitydata.nl/naturalis/specimen/ZMA.INS.1003070",
+            "dcterms:created": "2025-01-28T13:08:42.659Z",
             "dcterms:license": "http://creativecommons.org/licenses/by-nc/4.0/",
-            "ods:topicDiscipline": "Palaeontology"
-        }
+            "dcterms:modified": "2015/09/02",
+            "ods:topicDiscipline": "Palaeontology",
+            "ods:physicalSpecimenID": "https://data.biodiversitydata.nl/naturalis/specimen/ZMA.INS.1003070",
+            "ods:normalisedPhysicalSpecimenID": "https://data.biodiversitydata.nl/naturalis/specimen/ZMA.INS.1003070"        }
         """, targetId));
   }
 

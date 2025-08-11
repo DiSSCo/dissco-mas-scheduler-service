@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -26,11 +27,14 @@ public class MasSchedulerController {
   private final MasSchedulerService masSchedulerService;
 
   @PostMapping("")
-  public ResponseEntity<Void> scheduleMas(MasJobRequest masJobRequest) throws PidCreationException {
-    log.info("Scheduling mas {} on digital object {}, requested by agent {}", masJobRequest.masId(),
-        masJobRequest.targetObject().get("@id").asText(),
+  public ResponseEntity<Void> scheduleMas(@RequestBody MasJobRequest masJobRequest)
+      throws PidCreationException {
+    log.info("Scheduling mas {} on digital object {}, requested by agent {}",
+        masJobRequest.masId(),
+        masJobRequest.targetId(),
         masJobRequest.agentId());
     masSchedulerService.scheduleMass(Set.of(masJobRequest));
+    log.info("MAS Scheduled");
     return ResponseEntity.status(HttpStatus.ACCEPTED).build();
   }
 

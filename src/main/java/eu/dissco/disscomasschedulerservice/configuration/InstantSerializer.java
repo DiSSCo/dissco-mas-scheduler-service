@@ -1,7 +1,7 @@
 package eu.dissco.disscomasschedulerservice.configuration;
 
 
-import static eu.dissco.disscomasschedulerservice.configuration.DateUtils.DATE_STRING;
+import static eu.dissco.disscomasschedulerservice.configuration.DateTimeConfiguration.DATE_STRING;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;

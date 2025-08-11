@@ -4,6 +4,8 @@
 package eu.dissco.disscomasschedulerservice.database.jooq;
 
 
+import eu.dissco.disscomasschedulerservice.database.jooq.tables.DigitalMediaObject;
+import eu.dissco.disscomasschedulerservice.database.jooq.tables.DigitalSpecimen;
 import eu.dissco.disscomasschedulerservice.database.jooq.tables.MachineAnnotationService;
 import eu.dissco.disscomasschedulerservice.database.jooq.tables.MasJobRecord;
 
@@ -13,6 +15,16 @@ import eu.dissco.disscomasschedulerservice.database.jooq.tables.MasJobRecord;
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Tables {
+
+  /**
+   * The table <code>public.digital_media_object</code>.
+   */
+  public static final DigitalMediaObject DIGITAL_MEDIA_OBJECT = DigitalMediaObject.DIGITAL_MEDIA_OBJECT;
+
+  /**
+   * The table <code>public.digital_specimen</code>.
+   */
+  public static final DigitalSpecimen DIGITAL_SPECIMEN = DigitalSpecimen.DIGITAL_SPECIMEN;
 
     /**
      * The table <code>public.machine_annotation_service</code>.

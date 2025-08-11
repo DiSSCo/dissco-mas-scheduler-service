@@ -14,9 +14,9 @@ import static eu.dissco.disscomasschedulerservice.TestUtils.givenFiltersDigitalM
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenFiltersDigitalSpecimen;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenMas;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenMasJobRequest;
-import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -25,13 +25,16 @@ import static org.mockito.Mockito.times;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import eu.dissco.backend.schema.OdsHasTargetDigitalObjectFilter;
+import eu.dissco.disscomasschedulerservice.database.jooq.enums.MjrTargetType;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
 import eu.dissco.disscomasschedulerservice.domain.MasTarget;
-import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
+import eu.dissco.disscomasschedulerservice.repository.DigitalMediaRepository;
+import eu.dissco.disscomasschedulerservice.repository.DigitalSpecimenRepository;
 import eu.dissco.disscomasschedulerservice.repository.MasJobRecordRepository;
 import eu.dissco.disscomasschedulerservice.repository.MasRepository;
 import eu.dissco.disscomasschedulerservice.web.HandleComponent;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,12 +58,16 @@ class MasSchedulerServiceTest {
   private RabbitMqPublisherService publisherService;
   @Mock
   private HandleComponent handleComponent;
+  @Mock
+  private DigitalSpecimenRepository specimenRepository;
+  @Mock
+  private DigitalMediaRepository mediaRepository;
 
 
   @BeforeEach
   void init() {
     masSchedulerService = new MasSchedulerService(masRepository, masJobRecordRepository,
-        publisherService, handleComponent);
+        publisherService, handleComponent, specimenRepository, mediaRepository);
   }
 
   @Test
@@ -82,6 +89,10 @@ class MasSchedulerServiceTest {
         HANDLE + "/job-4"
     );
     given(handleComponent.postHandle(4)).willReturn(handles);
+    given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID),
+        TARGET_ID_ALT, givenDigitalSpecimen(TARGET_ID_ALT)
+    ));
 
     // When
     masSchedulerService.scheduleMass(masJobRequests);
@@ -96,9 +107,7 @@ class MasSchedulerServiceTest {
   @MethodSource("provideFilters")
   void testScheduleMasDoesntComply(OdsHasTargetDigitalObjectFilter filters) throws Exception {
     // Given
-    var masRequest = new MasJobRequest(
-        MAS_ID,
-        MAPPER.readTree("""
+    var digitalSpecimen = MAPPER.readTree("""
             {
               "@id": "https://doi.org/20.5000.1025/111-222-333",
               "@type": "ods:DigitalSpecimen",
@@ -121,7 +130,13 @@ class MasSchedulerServiceTest {
                 }
               ]
             }
-            """), false, AGENT_ID);
+        """);
+    given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
+        TARGET_ID, digitalSpecimen
+    ));
+    var masRequest = new MasJobRequest(
+        MAS_ID,
+        TARGET_ID, false, AGENT_ID, MjrTargetType.DIGITAL_SPECIMEN);
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(
         List.of(givenMas(MAS_ID, false, filters)));
 
@@ -138,9 +153,11 @@ class MasSchedulerServiceTest {
   void testScheduleBatchingDoesntComply() throws Exception {
     // Given
     var masRequest = new MasJobRequest(
-        MAS_ID,
-        givenDigitalSpecimen(TARGET_ID), true, AGENT_ID);
+        MAS_ID, TARGET_ID, true, AGENT_ID, MjrTargetType.DIGITAL_SPECIMEN);
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
+    given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID)
+    ));
 
     // When
     masSchedulerService.scheduleMass(Set.of(masRequest));
@@ -155,8 +172,11 @@ class MasSchedulerServiceTest {
   void testScheduleMediaMas() throws Exception {
     // Given
     var masRequest = new MasJobRequest(
-        MAS_ID, givenDigitalMedia(TARGET_ID), false, AGENT_ID
+        MAS_ID, TARGET_ID, false, AGENT_ID, MjrTargetType.MEDIA_OBJECT
     );
+    given(mediaRepository.getMedia(anySet())).willReturn(Map.of(
+        TARGET_ID, givenDigitalMedia(TARGET_ID)
+    ));
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)
         .withOdsHasTargetDigitalObjectFilter(givenFiltersDigitalMedia())));
     given(handleComponent.postHandle(1)).willReturn(List.of(JOB_ID));
@@ -179,6 +199,9 @@ class MasSchedulerServiceTest {
     // Given
     var masRequest = givenMasJobRequest();
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
+    given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID)
+    ));
     given(handleComponent.postHandle(1)).willReturn(List.of(JOB_ID));
     doThrow(JsonProcessingException.class).when(publisherService).publishMasJob(any(), any());
 
@@ -187,27 +210,6 @@ class MasSchedulerServiceTest {
 
     // Then
     then(masJobRecordRepository).should().markMasJobRecordsAsFailed(List.of(JOB_ID));
-  }
-
-  @Test
-  void testScheduleInvalidType() throws Exception {
-    // Given
-    var masRequest = new MasJobRequest(
-        MAS_ID, MAPPER.readTree("""
-        {
-          "@id": "https://doi.org/10.3535/AAA-BBB-CCC",
-          "@type": "ods:Annotation"
-        }
-        
-        """), false, AGENT_ID
-    );
-    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)
-        .withOdsHasTargetDigitalObjectFilter(null)));
-    given(handleComponent.postHandle(1)).willReturn(List.of(JOB_ID));
-
-    // When
-    assertThrowsExactly(InvalidRequestException.class,
-        () -> masSchedulerService.scheduleMass(Set.of(masRequest)));
   }
 
   private static Stream<Arguments> provideFilters() {
