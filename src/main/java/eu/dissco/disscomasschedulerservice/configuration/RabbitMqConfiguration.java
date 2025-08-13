@@ -1,5 +1,6 @@
 package eu.dissco.disscomasschedulerservice.configuration;
 
+import eu.dissco.disscomasschedulerservice.component.MessageCompressionComponent;
 import eu.dissco.disscomasschedulerservice.properties.RabbitMqProperties;
 import lombok.AllArgsConstructor;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
@@ -11,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @AllArgsConstructor
 public class RabbitMqConfiguration {
   private final RabbitMqProperties rabbitMQProperties;
+  private final MessageCompressionComponent compressedMessageConverter;
 
   @Bean
   public SimpleRabbitListenerContainerFactory consumerBatchContainerFactory(
@@ -20,7 +22,7 @@ public class RabbitMqConfiguration {
     factory.setBatchListener(true);
     factory.setBatchSize(rabbitMQProperties.getBatchSize());
     factory.setConsumerBatchEnabled(true);
+    factory.setMessageConverter(compressedMessageConverter);
     return factory;
   }
-
 }

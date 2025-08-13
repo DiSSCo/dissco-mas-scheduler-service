@@ -26,7 +26,7 @@ public class RabbitMqConsumerService {
   private final MasSchedulerService masSchedulerService;
 
   @RabbitListener(queues = {
-      "rabbitmq.queue-name"}, containerFactory = "consumerBatchContainerFactory")
+      "${rabbitmq.queue-name}"}, containerFactory = "consumerBatchContainerFactory")
   public void getMessages(@Payload List<String> messages) throws PidCreationException {
     var events = messages.stream().map(message -> {
           try {

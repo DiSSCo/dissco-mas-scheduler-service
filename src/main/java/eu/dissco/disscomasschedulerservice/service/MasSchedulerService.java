@@ -68,6 +68,7 @@ public class MasSchedulerService {
         .filter(masRequest -> checkIfMasCompliesToTarget(masRequest.targetObject(),
             masMap.get(masRequest.masId())))
         .toList();
+    log.info("Publishing {} MAS jobs", filteredRequests.size());
     var masJobRecordMap = createMasJobRecords(filteredRequests, masMap);
     var failedMasJobs = new ArrayList<String>();
     for (var masRequest : filteredRequests) {
