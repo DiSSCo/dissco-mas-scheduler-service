@@ -31,6 +31,7 @@ import eu.dissco.disscomasschedulerservice.database.jooq.enums.MjrTargetType;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
 import eu.dissco.disscomasschedulerservice.domain.MasTarget;
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
+import eu.dissco.disscomasschedulerservice.exception.NotFoundException;
 import eu.dissco.disscomasschedulerservice.repository.DigitalMediaRepository;
 import eu.dissco.disscomasschedulerservice.repository.DigitalSpecimenRepository;
 import eu.dissco.disscomasschedulerservice.repository.MasJobRecordRepository;
@@ -178,7 +179,7 @@ class MasSchedulerServiceTest {
     given(environment.matchesProfiles(Profiles.WEB)).willReturn(true);
 
     // When / then
-    assertThrowsExactly(InvalidRequestException.class,
+    assertThrowsExactly(NotFoundException.class,
         () -> masSchedulerService.scheduleMass(Set.of(masRequest)));
   }
 
@@ -226,7 +227,7 @@ class MasSchedulerServiceTest {
     given(environment.matchesProfiles(Profiles.WEB)).willReturn(true);
 
     // When / then
-    assertThrowsExactly(InvalidRequestException.class,
+    assertThrowsExactly(NotFoundException.class,
         () -> masSchedulerService.scheduleMass(Set.of(masRequest)));
   }
 

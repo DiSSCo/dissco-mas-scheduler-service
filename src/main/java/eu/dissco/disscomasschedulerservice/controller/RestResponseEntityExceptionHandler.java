@@ -1,8 +1,8 @@
 package eu.dissco.disscomasschedulerservice.controller;
 
 import eu.dissco.disscomasschedulerservice.Profiles;
-import eu.dissco.disscomasschedulerservice.domain.ExceptionResponseWrapper;
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
+import eu.dissco.disscomasschedulerservice.exception.NotFoundException;
 import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
@@ -18,24 +18,20 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
 
   @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
   @ExceptionHandler(PidCreationException.class)
-  public ResponseEntity<ExceptionResponseWrapper> handlePidCreationException(PidCreationException e) {
-    var exceptionResponse = new ExceptionResponseWrapper(
-        HttpStatus.UNPROCESSABLE_ENTITY,
-        "PidCreationException",
-        e.getMessage()
-    );
-    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(exceptionResponse);
+  public ResponseEntity<String> handlePidCreationException(PidCreationException e) {
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
   }
 
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ExceptionHandler(InvalidRequestException.class)
-  public ResponseEntity<ExceptionResponseWrapper> handleException(InvalidRequestException e) {
-    var exceptionResponse = new ExceptionResponseWrapper(
-        HttpStatus.BAD_REQUEST,
-        "Invalid request",
-        e.getMessage()
-    );
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exceptionResponse);
+  public ResponseEntity<String> handleException(InvalidRequestException e) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+  }
+
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  @ExceptionHandler(NotFoundException.class)
+  public ResponseEntity<String> handleException(NotFoundException e) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
   }
 
 

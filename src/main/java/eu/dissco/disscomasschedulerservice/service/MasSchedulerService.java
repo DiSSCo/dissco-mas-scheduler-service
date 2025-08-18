@@ -15,6 +15,7 @@ import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRequestFull;
 import eu.dissco.disscomasschedulerservice.domain.MasTarget;
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
+import eu.dissco.disscomasschedulerservice.exception.NotFoundException;
 import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
 import eu.dissco.disscomasschedulerservice.repository.DigitalMediaRepository;
 import eu.dissco.disscomasschedulerservice.repository.DigitalSpecimenRepository;
@@ -114,7 +115,7 @@ public class MasSchedulerService {
     if (targetIds.size() > targetMap.size()) {
       log.error("Unable to resolve all {}. Verify targets are not tombstoned", targetType);
       if (environment.matchesProfiles(Profiles.WEB)) {
-        throw new InvalidRequestException("Unable to resolve all targets");
+        throw new NotFoundException("Unable to resolve all targets");
       }
     }
   }
@@ -128,7 +129,7 @@ public class MasSchedulerService {
       var missingMas = uniqueMasIds.stream().filter(masId -> !masMap.containsKey(masId)).collect(
           Collectors.toSet());
       log.error("MASs {} not found", missingMas);
-      throw new InvalidRequestException("Unable to retrieve all MASs");
+      throw new NotFoundException("Unable to retrieve all MASs");
     }
   }
 
