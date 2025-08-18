@@ -42,8 +42,7 @@ public class MasRepository {
   }
 
   private String removeProxy(String id) {
-    return id.replace("urn:uuid:", "")
-        .replace(HANDLE_STRING, "");
+    return id.replace(HANDLE_STRING, "");
   }
 
 }

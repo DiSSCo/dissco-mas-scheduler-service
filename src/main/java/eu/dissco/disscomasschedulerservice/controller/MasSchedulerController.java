@@ -34,7 +34,7 @@ public class MasSchedulerController {
         masJobRequest.targetId(),
         masJobRequest.agentId());
     masSchedulerService.scheduleMass(Set.of(masJobRequest));
-    log.info("MAS Scheduled");
+    log.info("MAS {} Scheduled", masJobRequest.masId());
     return ResponseEntity.status(HttpStatus.ACCEPTED).build();
   }
 

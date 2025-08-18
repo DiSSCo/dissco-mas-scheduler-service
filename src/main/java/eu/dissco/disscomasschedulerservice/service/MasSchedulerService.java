@@ -122,14 +122,14 @@ public class MasSchedulerService {
 
   private void verifyValidMas(Set<String> uniqueMasIds,
       Map<String, MachineAnnotationService> masMap) {
-    if (!environment.matchesProfiles(Profiles.WEB)) {
-      return;
-    }
+
     if (uniqueMasIds.size() > masMap.size()) {
       var missingMas = uniqueMasIds.stream().filter(masId -> !masMap.containsKey(masId)).collect(
           Collectors.toSet());
       log.error("MASs {} not found", missingMas);
-      throw new NotFoundException("Unable to retrieve all MASs");
+      if (environment.matchesProfiles(Profiles.WEB)) {
+        throw new NotFoundException("Unable to retrieve all MASs");
+      }
     }
   }
 
