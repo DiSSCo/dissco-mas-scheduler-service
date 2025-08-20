@@ -3,7 +3,7 @@ package eu.dissco.disscomasschedulerservice.controller;
 import eu.dissco.disscomasschedulerservice.Profiles;
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
 import eu.dissco.disscomasschedulerservice.exception.NotFoundException;
-import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
+import eu.dissco.disscomasschedulerservice.exception.UnprocessableEntityException;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,8 +17,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionHandler {
 
   @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
-  @ExceptionHandler(PidCreationException.class)
-  public ResponseEntity<String> handlePidCreationException(PidCreationException e) {
+  @ExceptionHandler(UnprocessableEntityException.class)
+  public ResponseEntity<String> handlePidCreationException(UnprocessableEntityException e) {
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
   }
 

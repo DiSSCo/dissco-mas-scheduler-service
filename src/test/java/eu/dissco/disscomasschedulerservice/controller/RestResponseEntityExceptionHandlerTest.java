@@ -3,7 +3,7 @@ package eu.dissco.disscomasschedulerservice.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
-import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
+import eu.dissco.disscomasschedulerservice.exception.UnprocessableEntityException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -18,11 +18,11 @@ class RestResponseEntityExceptionHandlerTest {
   }
 
   @Test
-  void testPidCreationExceptionMessage() {
+  void testUnprocessableExceptionMessage() {
     // Given
 
     // When
-    var result = exceptionHandler.handlePidCreationException(new PidCreationException(""));
+    var result = exceptionHandler.handlePidCreationException(new UnprocessableEntityException(""));
 
     // Then
     assertThat(result.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);

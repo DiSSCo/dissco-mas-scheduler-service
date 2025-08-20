@@ -6,7 +6,7 @@ import eu.dissco.disscomasschedulerservice.Profiles;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
 import eu.dissco.disscomasschedulerservice.exception.NotFoundException;
-import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
+import eu.dissco.disscomasschedulerservice.exception.UnprocessableEntityException;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -30,7 +30,7 @@ public class RabbitMqConsumerService {
   @RabbitListener(queues = {
       "${rabbitmq.queue-name}"}, containerFactory = "consumerBatchContainerFactory")
   public void getMessages(@Payload List<String> messages)
-      throws PidCreationException, NotFoundException, InvalidRequestException {
+      throws UnprocessableEntityException, NotFoundException, InvalidRequestException {
     var events = messages.stream().map(message -> {
           try {
             return mapper.readValue(message, MasJobRequest.class);

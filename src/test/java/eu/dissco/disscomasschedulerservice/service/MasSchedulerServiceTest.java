@@ -17,6 +17,7 @@ import static eu.dissco.disscomasschedulerservice.TestUtils.givenMasJobRequest;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
@@ -33,6 +34,8 @@ import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
 import eu.dissco.disscomasschedulerservice.domain.MasTarget;
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
 import eu.dissco.disscomasschedulerservice.exception.NotFoundException;
+import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
+import eu.dissco.disscomasschedulerservice.exception.UnprocessableEntityException;
 import eu.dissco.disscomasschedulerservice.repository.DigitalMediaRepository;
 import eu.dissco.disscomasschedulerservice.repository.DigitalSpecimenRepository;
 import eu.dissco.disscomasschedulerservice.repository.MasJobRecordRepository;
@@ -113,7 +116,7 @@ class MasSchedulerServiceTest {
 
   @ParameterizedTest
   @MethodSource("provideFilters")
-  void testScheduleMasDoesntComply(OdsHasTargetDigitalObjectFilter filters) throws Exception {
+  void testScheduleMasDoesntComplyAsync(OdsHasTargetDigitalObjectFilter filters) throws Exception {
     // Given
     var digitalSpecimen = MAPPER.readTree("""
             {
@@ -147,6 +150,7 @@ class MasSchedulerServiceTest {
         TARGET_ID, false, AGENT_ID, MjrTargetType.DIGITAL_SPECIMEN);
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(
         List.of(givenMas(MAS_ID, false, filters)));
+    given(environment.matchesProfiles(Profiles.WEB)).willReturn(false);
 
     // When
     masSchedulerService.scheduleMass(Set.of(masRequest));
@@ -154,7 +158,7 @@ class MasSchedulerServiceTest {
     // Then
     then(handleComponent).shouldHaveNoInteractions();
     then(masJobRecordRepository).shouldHaveNoInteractions();
-    then(publisherService).shouldHaveNoInteractions();
+    then(publisherService).should().deadLetterMasJobRequest(masRequest);
   }
 
   @Test
@@ -204,12 +208,53 @@ class MasSchedulerServiceTest {
     // Given
     var masRequest = givenMasJobRequest();
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
+    given(environment.matchesProfiles(Profiles.WEB)).willReturn(false);
 
     // When
     masSchedulerService.scheduleMass(Set.of(masRequest));
 
     // Then
     then(handleComponent).shouldHaveNoInteractions();
+    then(masJobRecordRepository).shouldHaveNoInteractions();
+    then(publisherService).should().deadLetterMasJobRequest(masRequest);
+  }
+
+  @Test
+  void testScheduleTargetPidCreationFailedAsync() throws Exception {
+    // Given
+    var masRequest = givenMasJobRequest();
+    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
+    given(environment.matchesProfiles(Profiles.WEB)).willReturn(false);
+    given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID)
+    ));
+    doThrow(PidCreationException.class).when(handleComponent).postHandle(anyInt());
+
+    // When
+    assertThrowsExactly(UnprocessableEntityException.class,
+        () -> masSchedulerService.scheduleMass(Set.of(masRequest)));
+
+    // Then
+    then(masJobRecordRepository).shouldHaveNoInteractions();
+    then(publisherService).should().deadLetterMasJobRequest(masRequest);
+  }
+
+  @Test
+  void testScheduleTargetPidCreationFailedWeb() throws Exception {
+    // Given
+    var masRequest = givenMasJobRequest();
+    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
+    given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID)
+    ));
+    given(environment.matchesProfiles(Profiles.WEB)).willReturn(true);
+    doThrow(PidCreationException.class).when(handleComponent).postHandle(anyInt());
+
+    // When
+    assertThrowsExactly(UnprocessableEntityException.class,
+        () -> masSchedulerService.scheduleMass(Set.of(masRequest)));
+
+    // Then
     then(masJobRecordRepository).shouldHaveNoInteractions();
     then(publisherService).shouldHaveNoInteractions();
   }
@@ -243,7 +288,7 @@ class MasSchedulerServiceTest {
     // Then
     then(handleComponent).shouldHaveNoInteractions();
     then(masJobRecordRepository).shouldHaveNoInteractions();
-    then(publisherService).shouldHaveNoInteractions();
+    then(publisherService).should().deadLetterMasJobRequest(masRequest);
   }
 
   @Test
@@ -289,8 +334,7 @@ class MasSchedulerServiceTest {
 
     // Then
     then(handleComponent).shouldHaveNoInteractions();
-    then(masJobRecordRepository).shouldHaveNoInteractions();
-    then(publisherService).shouldHaveNoInteractions();
+    then(publisherService).should().deadLetterMasJobRequest(masRequest);
   }
 
   @Test
@@ -320,7 +364,7 @@ class MasSchedulerServiceTest {
   }
 
   @Test
-  void testScheduleMasFailed() throws Exception {
+  void testScheduleMasFailedAsync() throws Exception {
     // Given
     var masRequest = givenMasJobRequest();
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
@@ -329,12 +373,35 @@ class MasSchedulerServiceTest {
     ));
     given(handleComponent.postHandle(1)).willReturn(List.of(JOB_ID));
     doThrow(JsonProcessingException.class).when(publisherService).publishMasJob(any(), any());
+    given(environment.matchesProfiles(Profiles.WEB)).willReturn(false);
 
     // When
     masSchedulerService.scheduleMass(Set.of(masRequest));
 
     // Then
     then(masJobRecordRepository).should().markMasJobRecordsAsFailed(List.of(JOB_ID));
+    then(publisherService).should().deadLetterMasJobRequest(masRequest);
+  }
+
+  @Test
+  void testScheduleMasFailedWeb() throws Exception {
+    // Given
+    var masRequest = givenMasJobRequest();
+    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
+    given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID)
+    ));
+    given(handleComponent.postHandle(1)).willReturn(List.of(JOB_ID));
+    doThrow(JsonProcessingException.class).when(publisherService).publishMasJob(any(), any());
+    given(environment.matchesProfiles(Profiles.WEB)).willReturn(true);
+
+    // When
+    assertThrows(UnprocessableEntityException.class,
+        () -> masSchedulerService.scheduleMass(Set.of(masRequest)));
+
+    // Then
+    then(masJobRecordRepository).should().markMasJobRecordsAsFailed(List.of(JOB_ID));
+    then(publisherService).shouldHaveNoMoreInteractions();
   }
 
   private static Stream<Arguments> provideFilters() {
@@ -360,6 +427,5 @@ class MasSchedulerServiceTest {
             .withAdditionalProperty("$['omg:someRandomNonExistingKey']", List.of("Nothing")))
     );
   }
-
 
 }

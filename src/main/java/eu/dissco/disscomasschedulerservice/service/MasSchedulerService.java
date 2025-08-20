@@ -17,6 +17,7 @@ import eu.dissco.disscomasschedulerservice.domain.MasTarget;
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
 import eu.dissco.disscomasschedulerservice.exception.NotFoundException;
 import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
+import eu.dissco.disscomasschedulerservice.exception.UnprocessableEntityException;
 import eu.dissco.disscomasschedulerservice.repository.DigitalMediaRepository;
 import eu.dissco.disscomasschedulerservice.repository.DigitalSpecimenRepository;
 import eu.dissco.disscomasschedulerservice.repository.MasJobRecordRepository;
@@ -50,12 +51,12 @@ public class MasSchedulerService {
   private final Environment environment;
 
   public void scheduleMass(Set<MasJobRequest> masRequests)
-      throws PidCreationException, InvalidRequestException, NotFoundException {
+      throws UnprocessableEntityException, InvalidRequestException, NotFoundException {
     Set<MasJobRequest> failedMasJobRequests = new HashSet<>();
     var uniqueMasIds = masRequests.stream().map(MasJobRequest::masId).collect(Collectors.toSet());
     var masMap = masRepository.getMasRecords(uniqueMasIds).stream()
         .collect(Collectors.toMap(MachineAnnotationService::getId, Function.identity()));
-    validateMas(uniqueMasIds, masMap, masRequests, failedMasJobRequests);
+    verifyMasExists(uniqueMasIds, masMap, masRequests, failedMasJobRequests);
     var targetObjectMap = getTargetObjects(masRequests, failedMasJobRequests);
     var filteredRequests = filterMasJobRequests(masRequests, failedMasJobRequests, targetObjectMap,
         masMap);
@@ -81,16 +82,19 @@ public class MasSchedulerService {
             masRequest.targetType()
         ));
       }
-      processFailedJobs(failedMasJobIds, failedMasJobRequests);
     }
+    processFailedJobs(failedMasJobIds, failedMasJobRequests);
   }
 
   private void processFailedJobs(List<String> failedMasJobIds,
-      Set<MasJobRequest> failedMasJobRequests) {
+      Set<MasJobRequest> failedMasJobRequests) throws UnprocessableEntityException {
     if (!failedMasJobIds.isEmpty()) {
       masJobRecordRepository.markMasJobRecordsAsFailed(failedMasJobIds);
+      if (environment.matchesProfiles(Profiles.WEB)) {
+        throw new UnprocessableEntityException("MAS publication failed");
+      }
     }
-    if (!failedMasJobIds.isEmpty()) {
+    if (!failedMasJobRequests.isEmpty() && !environment.matchesProfiles(Profiles.WEB)) {
       failedMasJobRequests.forEach(failedMasJobRequest -> {
         try {
           publisherService.deadLetterMasJobRequest(failedMasJobRequest);
@@ -108,8 +112,8 @@ public class MasSchedulerService {
     for (var masRequest : masRequests) {
       if (targetObjectMap.containsKey(masRequest.targetId())
           && masMap.containsKey(masRequest.masId())
-          && checkIfBatchingComplies(masRequest, masMap.get(masRequest.masId()))
-          && checkIfMasCompliesToTarget(targetObjectMap.get(masRequest.targetId()),
+          && batchingComplies(masRequest, masMap.get(masRequest.masId()))
+          && masCompliesToTarget(targetObjectMap.get(masRequest.targetId()),
           masMap.get(masRequest.masId()))) {
         masJobRequests.add(
             new MasJobRequestFull(
@@ -166,7 +170,7 @@ public class MasSchedulerService {
     }
   }
 
-  private void validateMas(Set<String> uniqueMasIds,
+  private void verifyMasExists(Set<String> uniqueMasIds,
       Map<String, MachineAnnotationService> masMap, Set<MasJobRequest> masJobRequests,
       Set<MasJobRequest> failedMasJobRequests) throws NotFoundException {
     if (uniqueMasIds.size() > masMap.size()) {
@@ -185,12 +189,12 @@ public class MasSchedulerService {
 
   private Map<String, MasJobRecord> createMasJobRecords(List<MasJobRequestFull> filteredRequests,
       Map<String, MachineAnnotationService> masMap)
-      throws PidCreationException {
+      throws UnprocessableEntityException {
     if (filteredRequests.isEmpty()) {
       return Map.of();
     }
     log.info("Requesting {} handles from API", filteredRequests.size());
-    var handles = handleComponent.postHandle(filteredRequests.size());
+    var handles = createHandles(filteredRequests);
     var handleItr = handles.iterator();
     var masJobRecordList = filteredRequests.stream().map(
         masRequest -> new MasJobRecord(
@@ -209,13 +213,29 @@ public class MasSchedulerService {
             Function.identity()));
   }
 
+  private List<String> createHandles(List<MasJobRequestFull> filteredRequests)
+      throws UnprocessableEntityException {
+    try {
+      return handleComponent.postHandle(filteredRequests.size());
+    } catch (PidCreationException e) {
+      log.error("Unable to create handles from API", e);
+      var dlqRequests = filteredRequests.stream().map(
+              masJobRequestFull -> new MasJobRequest(
+                  masJobRequestFull.masId(), masJobRequestFull.targetId(), masJobRequestFull.batching(),
+                  masJobRequestFull.agentId(), masJobRequestFull.targetType()))
+          .collect(Collectors.toSet());
+      processFailedJobs(List.of(), dlqRequests);
+      throw new UnprocessableEntityException("Unable to create identifiers for MAS job");
+    }
+  }
+
   // We need a temp key to link the job request to the mas job record we just created
   // Unfortunately we can't use the mas job record id because that's not in the request
   private static String getMasJobRecordKey(String targetId, String masId) {
     return targetId + "-" + masId;
   }
 
-  private boolean checkIfMasCompliesToTarget(JsonNode jsonNode,
+  private boolean masCompliesToTarget(JsonNode jsonNode,
       MachineAnnotationService machineAnnotationService) throws InvalidRequestException {
     var filters = machineAnnotationService.getOdsHasTargetDigitalObjectFilter();
     if (filters == null) {
@@ -260,7 +280,7 @@ public class MasSchedulerService {
     }
   }
 
-  private boolean checkIfBatchingComplies(MasJobRequest masJobRequest,
+  private boolean batchingComplies(MasJobRequest masJobRequest,
       MachineAnnotationService mas) throws InvalidRequestException {
     if (masJobRequest.batching() && Boolean.FALSE.equals(mas.getOdsBatchingPermitted())) {
       log.warn("MAS {} is not batchable, but it has been requested to run as a batch", mas.getId());
