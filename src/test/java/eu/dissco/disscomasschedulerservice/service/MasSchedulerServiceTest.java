@@ -14,6 +14,7 @@ import static eu.dissco.disscomasschedulerservice.TestUtils.givenFiltersDigitalM
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenFiltersDigitalSpecimen;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenMas;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenMasJobRequest;
+import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -154,6 +155,48 @@ class MasSchedulerServiceTest {
     then(handleComponent).shouldHaveNoInteractions();
     then(masJobRecordRepository).shouldHaveNoInteractions();
     then(publisherService).shouldHaveNoInteractions();
+  }
+
+  @Test
+  void testScheduleMasDoesntComplyWeb() throws Exception {
+    // Given
+    var filters = givenFiltersDigitalSpecimen();
+    given(environment.matchesProfiles(Profiles.WEB)).willReturn(true);
+    var digitalSpecimen = MAPPER.readTree("""
+            {
+              "@id": "https://doi.org/20.5000.1025/111-222-333",
+              "@type": "ods:DigitalSpecimen",
+              "ods:version": 1,
+              "ods:status": "Active",
+              "dcterms:modified": "2015/09/02",
+              "dcterms:created": "2025-01-28T13:08:42.659Z",
+              "ods:fdoType": "https://doi.org/21.T11148/894b1e6cad57e921764e",
+              "ods:midsLevel": 1,
+              "ods:normalisedPhysicalSpecimenID": "https://data.biodiversitydata.nl/naturalis/specimen/ZMA.INS.1003070",
+              "ods:physicalSpecimenID": "https://data.biodiversitydata.nl/naturalis/specimen/ZMA.INS.1003070",
+              "ods:topicDiscipline": "Botany",
+              "ods:hasEvents": [
+                {
+                  "eco:protocolDescriptions":["Butterfly net"],
+                  "ods:hasLocation": {
+                    "dwc:country": "Scotland"
+                  }
+                }
+              ]
+            }
+        """);
+    given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
+        TARGET_ID, digitalSpecimen
+    ));
+    var masRequest = new MasJobRequest(
+        MAS_ID,
+        TARGET_ID, false, AGENT_ID, MjrTargetType.DIGITAL_SPECIMEN);
+    given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(
+        List.of(givenMas(MAS_ID, false, filters)));
+
+    // When / Then
+    assertThrows(InvalidRequestException.class,
+        () -> masSchedulerService.scheduleMass(Set.of(masRequest)));
   }
 
   @Test

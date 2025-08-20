@@ -2,11 +2,13 @@ package eu.dissco.disscomasschedulerservice.component;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
@@ -24,13 +26,24 @@ public class MessageCompressionComponent implements MessageConverter {
   @Override
   public Message toMessage(final Object messageString, final MessageProperties messageProperties)
       throws MessageConversionException {
-
     if (!(messageString instanceof String)) {
       throw new MessageConversionException("Invalid message type: " + messageString.getClass());
     }
     final byte[] message = ((String) messageString).getBytes(StandardCharsets.UTF_8);
 
-    return new Message(message, messageProperties);
+    final byte[] compressedMessage;
+    try {
+      compressedMessage = deflateMessage(message);
+      log.debug(
+          "Compressed Length: " + compressedMessage.length + " vs Message Length: " + message.length
+              + " / Ratio: " +
+              String.format("%.2f%%", compressedMessage.length * 100f / message.length));
+      messageProperties.setContentType("application/json");
+      messageProperties.setContentEncoding("gzip");
+      return new Message(compressedMessage, messageProperties);
+    } catch (IOException e) {
+      throw new MessageConversionException("Failed to compress message " + messageString, e);
+    }
   }
 
   @Override
@@ -48,6 +61,17 @@ public class MessageCompressionComponent implements MessageConverter {
       }
     } else {
       return simpleConverter.fromMessage(message);
+    }
+  }
+
+  private static byte[] deflateMessage(byte[] message) throws IOException {
+    var bufferSize = 8192; // 8KB
+    try (var rstBao = new ByteArrayOutputStream(bufferSize)) {
+      try (var zos = new GZIPOutputStream(rstBao, bufferSize)) {
+        zos.write(message);
+        zos.flush();
+      }
+      return rstBao.toByteArray();
     }
   }
 

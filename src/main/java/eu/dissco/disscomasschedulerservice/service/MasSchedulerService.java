@@ -24,6 +24,7 @@ import eu.dissco.disscomasschedulerservice.repository.MasRepository;
 import eu.dissco.disscomasschedulerservice.web.HandleComponent;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -48,30 +49,19 @@ public class MasSchedulerService {
   private final DigitalMediaRepository mediaRepository;
   private final Environment environment;
 
-  public void scheduleMass(Set<MasJobRequest> masRequests) throws PidCreationException {
+  public void scheduleMass(Set<MasJobRequest> masRequests)
+      throws PidCreationException, InvalidRequestException, NotFoundException {
+    Set<MasJobRequest> failedMasJobRequests = new HashSet<>();
     var uniqueMasIds = masRequests.stream().map(MasJobRequest::masId).collect(Collectors.toSet());
     var masMap = masRepository.getMasRecords(uniqueMasIds).stream()
         .collect(Collectors.toMap(MachineAnnotationService::getId, Function.identity()));
-    verifyValidMas(uniqueMasIds, masMap);
-    var targetObjectMap = getTargetObjects(masRequests);
-    var filteredRequests = masRequests.stream()
-        .map(masRequest -> new MasJobRequestFull(
-            masRequest.masId(),
-            masRequest.targetId(),
-            targetObjectMap.get(masRequest.targetId()),
-            masRequest.batching(),
-            masRequest.agentId(),
-            masRequest.targetType()
-        ))
-        .filter(masRequest -> targetObjectMap.containsKey(masRequest.targetId()))
-        .filter(masRequest -> masMap.containsKey(masRequest.masId()))
-        .filter(masRequest -> checkIfBatchingComplies(masRequest, masMap.get(masRequest.masId())))
-        .filter(masRequest -> checkIfMasCompliesToTarget(masRequest.targetObject(),
-            masMap.get(masRequest.masId())))
-        .toList();
+    validateMas(uniqueMasIds, masMap, masRequests, failedMasJobRequests);
+    var targetObjectMap = getTargetObjects(masRequests, failedMasJobRequests);
+    var filteredRequests = filterMasJobRequests(masRequests, failedMasJobRequests, targetObjectMap,
+        masMap);
     log.info("Publishing {} MAS jobs", filteredRequests.size());
     var masJobRecordMap = createMasJobRecords(filteredRequests, masMap);
-    var failedMasJobs = new ArrayList<String>();
+    var failedMasJobIds = new ArrayList<String>();
     for (var masRequest : filteredRequests) {
       var masJobRecord = masJobRecordMap.get(
           getMasJobRecordKey(masRequest.targetObject().get("@id").asText(), masRequest.masId()));
@@ -82,15 +72,63 @@ public class MasSchedulerService {
         publisherService.publishMasJob(mas.getOdsTopicName(), masTarget);
       } catch (JsonProcessingException e) {
         log.error("Failed to send masRecord: {}  to rabbitMQ", mas.getId());
-        failedMasJobs.add(masJobRecord.jobId());
+        failedMasJobIds.add(masJobRecord.jobId());
+        failedMasJobRequests.add(new MasJobRequest(
+            masRequest.masId(),
+            masRequest.targetId(),
+            masRequest.batching(),
+            masRequest.agentId(),
+            masRequest.targetType()
+        ));
       }
-      if (!failedMasJobs.isEmpty()) {
-        masJobRecordRepository.markMasJobRecordsAsFailed(failedMasJobs);
-      }
+      processFailedJobs(failedMasJobIds, failedMasJobRequests);
     }
   }
 
-  private Map<String, JsonNode> getTargetObjects(Set<MasJobRequest> masRequests) {
+  private void processFailedJobs(List<String> failedMasJobIds,
+      Set<MasJobRequest> failedMasJobRequests) {
+    if (!failedMasJobIds.isEmpty()) {
+      masJobRecordRepository.markMasJobRecordsAsFailed(failedMasJobIds);
+    }
+    if (!failedMasJobIds.isEmpty()) {
+      failedMasJobRequests.forEach(failedMasJobRequest -> {
+        try {
+          publisherService.deadLetterMasJobRequest(failedMasJobRequest);
+        } catch (JsonProcessingException e) {
+          log.error("Unable to dlq mas job request {}", failedMasJobRequest);
+        }
+      });
+    }
+  }
+
+  private List<MasJobRequestFull> filterMasJobRequests(Set<MasJobRequest> masRequests,
+      Set<MasJobRequest> failedMasJobRequests, Map<String, JsonNode> targetObjectMap,
+      Map<String, MachineAnnotationService> masMap) throws InvalidRequestException {
+    List<MasJobRequestFull> masJobRequests = new ArrayList<>();
+    for (var masRequest : masRequests) {
+      if (targetObjectMap.containsKey(masRequest.targetId())
+          && masMap.containsKey(masRequest.masId())
+          && checkIfBatchingComplies(masRequest, masMap.get(masRequest.masId()))
+          && checkIfMasCompliesToTarget(targetObjectMap.get(masRequest.targetId()),
+          masMap.get(masRequest.masId()))) {
+        masJobRequests.add(
+            new MasJobRequestFull(
+                masRequest.masId(),
+                masRequest.targetId(),
+                targetObjectMap.get(masRequest.targetId()),
+                masRequest.batching(),
+                masRequest.agentId(),
+                masRequest.targetType()
+            ));
+      } else {
+        failedMasJobRequests.add(masRequest);
+      }
+    }
+    return masJobRequests;
+  }
+
+  private Map<String, JsonNode> getTargetObjects(Set<MasJobRequest> masRequests,
+      Set<MasJobRequest> failedMasJobRequests) throws NotFoundException {
     var specimenTargets = masRequests.stream()
         .filter(masRequest -> masRequest.targetType().equals(MjrTargetType.DIGITAL_SPECIMEN))
         .map(MasJobRequest::targetId)
@@ -103,39 +141,51 @@ public class MasSchedulerService {
         .collect(Collectors.toSet());
     var targetMapSpecimens = new HashMap<>(specimenRepository.getSpecimens(specimenTargets));
     var targetMapMedia = new HashMap<>(mediaRepository.getMedia(mediaTargets));
-    verifyTargetExists(specimenTargets, targetMapSpecimens, "specimen");
-    verifyTargetExists(mediaTargets, targetMapMedia, "media");
+    verifyTargetExists(specimenTargets, targetMapSpecimens, masRequests, failedMasJobRequests);
+    verifyTargetExists(mediaTargets, targetMapMedia, masRequests, failedMasJobRequests);
     return Stream.concat(targetMapSpecimens.entrySet().stream(), targetMapMedia.entrySet().stream())
         .filter(e -> e.getValue() != null)
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   private void verifyTargetExists(Set<String> targetIds, Map<String, JsonNode> targetMap,
-      String targetType) {
+      Set<MasJobRequest> masJobRequests, Set<MasJobRequest> failedMasJobRequests)
+      throws NotFoundException {
     if (targetIds.size() > targetMap.size()) {
-      log.error("Unable to resolve all {}. Verify targets are not tombstoned", targetType);
+      var missingTargetIds = targetIds.stream().filter(targetId -> !targetMap.containsKey(targetId))
+          .collect(
+              Collectors.toSet());
+      log.error("Targets not found: {}", missingTargetIds);
       if (environment.matchesProfiles(Profiles.WEB)) {
-        throw new NotFoundException("Unable to resolve all targets");
+        throw new NotFoundException("Unable to retrieve all targets");
+      } else {
+        failedMasJobRequests.addAll(masJobRequests.stream().filter(
+            masJobRequest -> missingTargetIds.contains(masJobRequest.targetId())
+        ).collect(Collectors.toSet()));
       }
     }
   }
 
-  private void verifyValidMas(Set<String> uniqueMasIds,
-      Map<String, MachineAnnotationService> masMap) {
-
+  private void validateMas(Set<String> uniqueMasIds,
+      Map<String, MachineAnnotationService> masMap, Set<MasJobRequest> masJobRequests,
+      Set<MasJobRequest> failedMasJobRequests) throws NotFoundException {
     if (uniqueMasIds.size() > masMap.size()) {
       var missingMas = uniqueMasIds.stream().filter(masId -> !masMap.containsKey(masId)).collect(
           Collectors.toSet());
-      log.error("MASs {} not found", missingMas);
+      log.error("MASs not found: {}", missingMas);
       if (environment.matchesProfiles(Profiles.WEB)) {
         throw new NotFoundException("Unable to retrieve all MASs");
       }
+      failedMasJobRequests.addAll(
+          masJobRequests.stream()
+              .filter(masJobRequest -> missingMas.contains(masJobRequest.masId()))
+              .collect(Collectors.toSet()));
     }
   }
 
   private Map<String, MasJobRecord> createMasJobRecords(List<MasJobRequestFull> filteredRequests,
       Map<String, MachineAnnotationService> masMap)
-      throws PidCreationException, InvalidRequestException {
+      throws PidCreationException {
     if (filteredRequests.isEmpty()) {
       return Map.of();
     }
@@ -148,7 +198,7 @@ public class MasSchedulerService {
             JobState.SCHEDULED,
             masRequest.masId(),
             masRequest.targetObject().get("@id").asText(),
-            getTargetType(masRequest.targetObject().get("@type").asText()),
+            masRequest.targetType(),
             masRequest.agentId(),
             masRequest.batching(),
             masMap.get(masRequest.masId()).getOdsTimeToLive())).toList();
@@ -159,24 +209,14 @@ public class MasSchedulerService {
             Function.identity()));
   }
 
-  private static MjrTargetType getTargetType(String type) {
-    if (type.equals("ods:DigitalSpecimen")) {
-      return MjrTargetType.DIGITAL_SPECIMEN;
-    } else if (type.equals("ods:DigitalMedia")) {
-      return MjrTargetType.MEDIA_OBJECT;
-    }
-    log.error("Unrecognized target @type: {}", type);
-    throw new InvalidRequestException("Unrecognized target @type" + type);
-  }
-
   // We need a temp key to link the job request to the mas job record we just created
   // Unfortunately we can't use the mas job record id because that's not in the request
   private static String getMasJobRecordKey(String targetId, String masId) {
     return targetId + "-" + masId;
   }
 
-  private static boolean checkIfMasCompliesToTarget(JsonNode jsonNode,
-      MachineAnnotationService machineAnnotationService) {
+  private boolean checkIfMasCompliesToTarget(JsonNode jsonNode,
+      MachineAnnotationService machineAnnotationService) throws InvalidRequestException {
     var filters = machineAnnotationService.getOdsHasTargetDigitalObjectFilter();
     if (filters == null) {
       return true;
@@ -203,11 +243,25 @@ public class MasSchedulerService {
         complies = false;
       }
     }
+    validateComplies(jsonNode, machineAnnotationService, complies);
     return complies;
   }
 
-  private boolean checkIfBatchingComplies(MasJobRequestFull masJobRequest,
-      MachineAnnotationService mas) {
+  private void validateComplies(JsonNode jsonNode,
+      MachineAnnotationService machineAnnotationService, boolean complies)
+      throws InvalidRequestException {
+    if (!complies && environment.matchesProfiles(Profiles.WEB)) {
+      throw new InvalidRequestException(
+          String.format("MAS %s does not comply with target %s", machineAnnotationService.getId(),
+              jsonNode.get("@id").asText()));
+    } else {
+      log.debug("MAS {} does not comply with target {}", machineAnnotationService.getId(),
+          jsonNode.get("@id").asText());
+    }
+  }
+
+  private boolean checkIfBatchingComplies(MasJobRequest masJobRequest,
+      MachineAnnotationService mas) throws InvalidRequestException {
     if (masJobRequest.batching() && Boolean.FALSE.equals(mas.getOdsBatchingPermitted())) {
       log.warn("MAS {} is not batchable, but it has been requested to run as a batch", mas.getId());
       if (environment.matchesProfiles(Profiles.WEB)) {
@@ -218,6 +272,4 @@ public class MasSchedulerService {
     }
     return true;
   }
-
-
 }

@@ -26,15 +26,17 @@ class MessageCompressionComponentTest {
   void testToMessage() {
     // Given
     var messageString = givenMessage();
-    var expected = new Message(messageString.getBytes(StandardCharsets.UTF_8),
-        new MessageProperties());
 
     // When
-    var result = messageCompressionComponent.toMessage(messageString,
+    var compressedMessage = messageCompressionComponent.toMessage(messageString,
         new MessageProperties());
 
     // Then
-    assertThat(result).isEqualTo(expected);
+    assertThat(compressedMessage.getMessageProperties().getContentEncoding()).isEqualTo("gzip");
+    assertThat(compressedMessage.getMessageProperties().getContentType()).isEqualTo(
+        "application/json");
+    var decompressedMessage = messageCompressionComponent.fromMessage(compressedMessage);
+    assertThat(decompressedMessage).isEqualTo(messageString);
   }
 
   @Test

@@ -18,7 +18,7 @@ import org.testcontainers.utility.DockerImageName;
 class BaseRepositoryIT {
 
   private static final DockerImageName POSTGIS =
-      DockerImageName.parse("postgres:15.2").asCompatibleSubstituteFor(IMAGE);
+      DockerImageName.parse("postgres:17.4").asCompatibleSubstituteFor(IMAGE);
 
   @Container
   private static final PostgreSQLContainer<?> CONTAINER = new PostgreSQLContainer<>(POSTGIS);

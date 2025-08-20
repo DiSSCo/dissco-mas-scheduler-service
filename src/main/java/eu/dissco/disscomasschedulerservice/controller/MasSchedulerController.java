@@ -2,6 +2,8 @@ package eu.dissco.disscomasschedulerservice.controller;
 
 import eu.dissco.disscomasschedulerservice.Profiles;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
+import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
+import eu.dissco.disscomasschedulerservice.exception.NotFoundException;
 import eu.dissco.disscomasschedulerservice.exception.PidCreationException;
 import eu.dissco.disscomasschedulerservice.service.MasSchedulerService;
 import java.util.Set;
@@ -28,7 +30,7 @@ public class MasSchedulerController {
 
   @PostMapping("")
   public ResponseEntity<Void> scheduleMas(@RequestBody MasJobRequest masJobRequest)
-      throws PidCreationException {
+      throws PidCreationException, NotFoundException, InvalidRequestException {
     log.info("Scheduling mas {} on digital object {}, requested by agent {}",
         masJobRequest.masId(),
         masJobRequest.targetId(),
