@@ -1,7 +1,6 @@
 package eu.dissco.disscomasschedulerservice.repository;
 
 import static eu.dissco.disscomasschedulerservice.database.jooq.Tables.MAS_JOB_RECORD;
-import static eu.dissco.disscomasschedulerservice.repository.RepositoryUtils.DOI_STRING;
 
 import eu.dissco.disscomasschedulerservice.database.jooq.enums.JobState;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRecord;
@@ -45,7 +44,5 @@ public class MasJobRecordRepository {
         .set(MAS_JOB_RECORD.BATCHING_REQUESTED, masJobRecord.batchingRequested())
         .set(MAS_JOB_RECORD.EXPIRES_ON, ttl);
   }
-
-
-
+  
 }
