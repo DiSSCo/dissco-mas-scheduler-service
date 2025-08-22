@@ -149,7 +149,7 @@ public class MasSchedulerService {
     verifyTargetExists(mediaTargets, targetMapMedia, masRequests, failedMasJobRequests);
     return Stream.concat(targetMapSpecimens.entrySet().stream(), targetMapMedia.entrySet().stream())
         .filter(e -> e.getValue() != null)
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        .collect(Collectors.toMap(entry -> DOI_STRING + entry.getKey(), Map.Entry::getValue));
   }
 
   private void verifyTargetExists(Set<String> targetIds, Map<String, JsonNode> targetMap,
