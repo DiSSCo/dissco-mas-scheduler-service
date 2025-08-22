@@ -1,7 +1,7 @@
 package eu.dissco.disscomasschedulerservice.repository;
 
+import static eu.dissco.disscomasschedulerservice.TestUtils.BARE_TARGET_DOI;
 import static eu.dissco.disscomasschedulerservice.TestUtils.CREATED;
-import static eu.dissco.disscomasschedulerservice.TestUtils.DOI;
 import static eu.dissco.disscomasschedulerservice.TestUtils.MAPPER;
 import static eu.dissco.disscomasschedulerservice.TestUtils.TARGET_ID;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenDateTimeFormatter;
@@ -21,8 +21,8 @@ import org.junit.jupiter.api.Test;
 
 class DigitalMediaRepositoryIT extends BaseRepositoryIT {
 
-  private DigitalMediaRepository mediaRepository;
   private final DateTimeFormatter formatter = givenDateTimeFormatter();
+  private DigitalMediaRepository mediaRepository;
 
   @BeforeEach
   void setup() {
@@ -45,10 +45,10 @@ class DigitalMediaRepositoryIT extends BaseRepositoryIT {
         .put("dcterms:identifier", TARGET_ID)
         .put("dcterms:created", formatter.format(CREATED))
         .put("ods:version", 1);
-    var expected = Map.of(TARGET_ID.replace(DOI, ""), media);
+    var expected = Map.of(BARE_TARGET_DOI, media);
 
     // When
-    var result = mediaRepository.getMedia(Set.of(TARGET_ID.replace(DOI, "")));
+    var result = mediaRepository.getMedia(Set.of(BARE_TARGET_DOI));
 
     // Then
     assertThat(result).isEqualTo(expected);
@@ -56,7 +56,7 @@ class DigitalMediaRepositoryIT extends BaseRepositoryIT {
 
   private void insertIntoDatabase() throws JsonProcessingException {
     context.insertInto(DIGITAL_MEDIA_OBJECT)
-        .set(DIGITAL_MEDIA_OBJECT.ID, TARGET_ID.replace(DOI, ""))
+        .set(DIGITAL_MEDIA_OBJECT.ID, BARE_TARGET_DOI)
         .set(DIGITAL_MEDIA_OBJECT.VERSION, 1)
         .set(DIGITAL_MEDIA_OBJECT.TYPE, "ods:DigitalMeda")
         .set(DIGITAL_MEDIA_OBJECT.CREATED, CREATED)
