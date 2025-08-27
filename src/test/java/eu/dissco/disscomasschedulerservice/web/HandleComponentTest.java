@@ -1,7 +1,7 @@
 package eu.dissco.disscomasschedulerservice.web;
 
 import static eu.dissco.disscomasschedulerservice.TestUtils.MAPPER;
-import static eu.dissco.disscomasschedulerservice.TestUtils.TARGET_ID;
+import static eu.dissco.disscomasschedulerservice.TestUtils.TARGET_ID_WITH_PROXY;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenPostHandleResponse;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -54,7 +54,7 @@ class HandleComponentTest {
   void testPostHandle() throws Exception {
     // Given
     var responseBody = givenPostHandleResponse(1);
-    var expected = List.of(TARGET_ID);
+    var expected = List.of(TARGET_ID_WITH_PROXY);
     mockHandleServer.enqueue(new MockResponse().setResponseCode(HttpStatus.OK.value())
         .setBody(MAPPER.writeValueAsString(responseBody))
         .addHeader("Content-Type", "application/json"));
@@ -102,7 +102,7 @@ class HandleComponentTest {
     var response = handleComponent.postHandle(1);
 
     // Then
-    assertThat(response).isEqualTo(List.of(TARGET_ID));
+    assertThat(response).isEqualTo(List.of(TARGET_ID_WITH_PROXY));
     assertThat(mockHandleServer.getRequestCount() - requestCount).isEqualTo(2);
   }
 

@@ -1,10 +1,10 @@
 package eu.dissco.disscomasschedulerservice.repository;
 
 import static eu.dissco.disscomasschedulerservice.TestUtils.AGENT_ID;
-import static eu.dissco.disscomasschedulerservice.TestUtils.BARE_TARGET_DOI;
 import static eu.dissco.disscomasschedulerservice.TestUtils.CREATED;
 import static eu.dissco.disscomasschedulerservice.TestUtils.MAPPER;
 import static eu.dissco.disscomasschedulerservice.TestUtils.TARGET_ID;
+import static eu.dissco.disscomasschedulerservice.TestUtils.TARGET_ID_WITH_PROXY;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenDateTimeFormatter;
 import static eu.dissco.disscomasschedulerservice.TestUtils.givenDigitalSpecimen;
 import static eu.dissco.disscomasschedulerservice.database.jooq.Tables.DIGITAL_SPECIMEN;
@@ -41,15 +41,15 @@ class DigitalSpecimenRepositoryIT extends BaseRepositoryIT {
     insertIntoDatabase();
     var specimen = (ObjectNode) givenDigitalSpecimen(TARGET_ID);
     specimen
-        .put("@id", TARGET_ID)
-        .put("dcterms:identifier", TARGET_ID)
+        .put("@id", TARGET_ID_WITH_PROXY)
+        .put("dcterms:identifier", TARGET_ID_WITH_PROXY)
         .put("ods:midsLevel", (short) 1)
         .put("dcterms:created", formatter.format(CREATED))
         .put("ods:version", 1);
-    var expected = Map.of(BARE_TARGET_DOI, specimen);
+    var expected = Map.of(TARGET_ID, specimen);
 
     // When
-    var result = specimenRepository.getSpecimens(Set.of(BARE_TARGET_DOI));
+    var result = specimenRepository.getSpecimens(Set.of(TARGET_ID));
 
     // Then
     assertThat(result).isEqualTo(expected);
@@ -57,7 +57,7 @@ class DigitalSpecimenRepositoryIT extends BaseRepositoryIT {
 
   private void insertIntoDatabase() throws JsonProcessingException {
     context.insertInto(DIGITAL_SPECIMEN)
-        .set(DIGITAL_SPECIMEN.ID, BARE_TARGET_DOI)
+        .set(DIGITAL_SPECIMEN.ID, TARGET_ID)
         .set(DIGITAL_SPECIMEN.VERSION, 1)
         .set(DIGITAL_SPECIMEN.TYPE, "ods:DigitalSpecimen")
         .set(DIGITAL_SPECIMEN.MIDSLEVEL, (short) 1)

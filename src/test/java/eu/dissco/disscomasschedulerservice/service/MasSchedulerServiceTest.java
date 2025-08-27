@@ -1,8 +1,6 @@
 package eu.dissco.disscomasschedulerservice.service;
 
 import static eu.dissco.disscomasschedulerservice.TestUtils.AGENT_ID;
-import static eu.dissco.disscomasschedulerservice.TestUtils.BARE_TARGET_ALT_DOI;
-import static eu.dissco.disscomasschedulerservice.TestUtils.BARE_TARGET_DOI;
 import static eu.dissco.disscomasschedulerservice.TestUtils.HANDLE;
 import static eu.dissco.disscomasschedulerservice.TestUtils.JOB_ID;
 import static eu.dissco.disscomasschedulerservice.TestUtils.MAPPER;
@@ -126,8 +124,8 @@ class MasSchedulerServiceTest {
     );
     given(handleComponent.postHandle(4)).willReturn(handles);
     given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
-        BARE_TARGET_DOI, givenDigitalSpecimen(TARGET_ID),
-        BARE_TARGET_ALT_DOI, givenDigitalSpecimen(TARGET_ID_ALT)
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID),
+        TARGET_ID_ALT, givenDigitalSpecimen(TARGET_ID_ALT)
     ));
 
     // When
@@ -215,7 +213,7 @@ class MasSchedulerServiceTest {
             }
         """);
     given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
-        BARE_TARGET_DOI, digitalSpecimen
+        TARGET_ID, digitalSpecimen
     ));
     var masRequest = new MasJobRequest(
         MAS_ID,
@@ -251,7 +249,7 @@ class MasSchedulerServiceTest {
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
     given(environment.matchesProfiles(Profiles.WEB)).willReturn(false);
     given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
-        BARE_TARGET_DOI, givenDigitalSpecimen(TARGET_ID)
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID)
     ));
     doThrow(PidCreationException.class).when(handleComponent).postHandle(anyInt());
 
@@ -270,7 +268,7 @@ class MasSchedulerServiceTest {
     var masRequest = givenMasJobRequest();
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
     given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
-        BARE_TARGET_DOI, givenDigitalSpecimen(TARGET_ID)
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID)
     ));
     given(environment.matchesProfiles(Profiles.WEB)).willReturn(true);
     doThrow(PidCreationException.class).when(handleComponent).postHandle(anyInt());
@@ -323,7 +321,7 @@ class MasSchedulerServiceTest {
         MAS_ID, TARGET_ID, true, AGENT_ID, MjrTargetType.DIGITAL_SPECIMEN);
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
     given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
-        BARE_TARGET_DOI, givenDigitalSpecimen(TARGET_ID)
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID)
     ));
     given(environment.matchesProfiles(Profiles.WEB)).willReturn(true);
 
@@ -369,7 +367,7 @@ class MasSchedulerServiceTest {
         MAS_ID, TARGET_ID, false, AGENT_ID, MjrTargetType.MEDIA_OBJECT
     );
     given(mediaRepository.getMedia(anySet())).willReturn(Map.of(
-        BARE_TARGET_DOI, givenDigitalMedia(TARGET_ID)
+        TARGET_ID, givenDigitalMedia(TARGET_ID)
     ));
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)
         .withOdsHasTargetDigitalObjectFilter(givenFiltersDigitalMedia())));
@@ -394,7 +392,7 @@ class MasSchedulerServiceTest {
     var masRequest = givenMasJobRequest();
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
     given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
-        BARE_TARGET_DOI, givenDigitalSpecimen(TARGET_ID)
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID)
     ));
     given(handleComponent.postHandle(1)).willReturn(List.of(JOB_ID));
     doThrow(JsonProcessingException.class).when(publisherService).publishMasJob(any(), any());
@@ -414,7 +412,7 @@ class MasSchedulerServiceTest {
     var masRequest = givenMasJobRequest();
     given(masRepository.getMasRecords(Set.of(MAS_ID))).willReturn(List.of(givenMas(MAS_ID)));
     given(specimenRepository.getSpecimens(anySet())).willReturn(Map.of(
-        BARE_TARGET_DOI, givenDigitalSpecimen(TARGET_ID)
+        TARGET_ID, givenDigitalSpecimen(TARGET_ID)
     ));
     given(handleComponent.postHandle(1)).willReturn(List.of(JOB_ID));
     doThrow(JsonProcessingException.class).when(publisherService).publishMasJob(any(), any());

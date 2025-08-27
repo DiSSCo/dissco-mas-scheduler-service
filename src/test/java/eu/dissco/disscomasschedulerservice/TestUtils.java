@@ -34,10 +34,9 @@ public class TestUtils {
   public static final String DOI = "https://doi.org/";
   public static final String MAS_ID = HANDLE + "/AAA-BBB-CCC";
   public static final String MAS_ID_ALT = HANDLE + "/XXX-YYY-ZZZ";
-  public static final String BARE_TARGET_DOI = PREFIX + "/111-222-333";
-  public static final String TARGET_ID = DOI + PREFIX + "/111-222-333";
-  public static final String BARE_TARGET_ALT_DOI = PREFIX + "/111-222-334";
-  public static final String TARGET_ID_ALT = DOI + PREFIX + "/111-222-334";
+  public static final String TARGET_ID = PREFIX + "/111-222-333";
+  public static final String TARGET_ID_WITH_PROXY = DOI + TARGET_ID;
+  public static final String TARGET_ID_ALT = PREFIX + "/111-222-334";
   public static final String JOB_ID = HANDLE + "/444-555-666";
   public static final String AGENT_ID = HANDLE + "/777-888-999";
 
