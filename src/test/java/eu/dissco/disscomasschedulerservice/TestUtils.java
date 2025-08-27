@@ -30,15 +30,15 @@ public class TestUtils {
   public static final ObjectMapper MAPPER;
   public static final Instant CREATED = Instant.parse("2022-11-01T09:59:24.00Z");
   public static final String PREFIX = "20.5000.1025";
-  public static final String HANDLE = "https://hdl.handle.net/" + PREFIX;
+  public static final String HANDLE = "https://hdl.handle.net/";
   public static final String DOI = "https://doi.org/";
-  public static final String MAS_ID = HANDLE + "/AAA-BBB-CCC";
-  public static final String MAS_ID_ALT = HANDLE + "/XXX-YYY-ZZZ";
+  public static final String MAS_ID = HANDLE + PREFIX + "/AAA-BBB-CCC";
+  public static final String MAS_ID_ALT = HANDLE + PREFIX + "/XXX-YYY-ZZZ";
   public static final String TARGET_ID = PREFIX + "/111-222-333";
   public static final String TARGET_ID_WITH_PROXY = DOI + TARGET_ID;
   public static final String TARGET_ID_ALT = PREFIX + "/111-222-334";
-  public static final String JOB_ID = HANDLE + "/444-555-666";
-  public static final String AGENT_ID = HANDLE + "/777-888-999";
+  public static final String JOB_ID = HANDLE + PREFIX + "/444-555-666";
+  public static final String AGENT_ID = HANDLE + PREFIX + "/777-888-999";
 
   public static final int TTL_DEFAULT = 86400;
 
@@ -82,7 +82,8 @@ public class TestUtils {
     );
   }
 
-  public static MasTarget givenMasTarget(String targetId, String jobId) throws JsonProcessingException {
+  public static MasTarget givenMasTarget(String targetId, String jobId)
+      throws JsonProcessingException {
     return new MasTarget(
         givenDigitalSpecimen(targetId),
         jobId,
@@ -178,11 +179,12 @@ public class TestUtils {
         .withSchemaCodeRepository("https://github.com/DiSSCo/fancy-mas")
         .withSchemaProgrammingLanguage("Java")
         .withOdsServiceAvailability("public")
-        .withSchemaMaintainer(new Agent().withType(Type.SCHEMA_SOFTWARE_APPLICATION).withId(AGENT_ID))
+        .withSchemaMaintainer(
+            new Agent().withType(Type.SCHEMA_SOFTWARE_APPLICATION).withId(AGENT_ID))
         .withSchemaLicense("https://www.apache.org/licenses/LICENSE-2.0")
         .withSchemaContactPoint(new SchemaContactPoint().withSchemaEmail("dontmail@dissco.eu"))
         .withOdsSlaDocumentation("https://www.know.dissco.tech/no_sla")
-        .withOdsTopicName(masId)
+        .withOdsTopicName(masId.replace(HANDLE, ""))
         .withOdsBatchingPermitted(batching)
         .withOdsTimeToLive(TTL_DEFAULT);
   }

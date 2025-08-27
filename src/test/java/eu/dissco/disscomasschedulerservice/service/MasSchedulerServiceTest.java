@@ -132,8 +132,9 @@ class MasSchedulerServiceTest {
     masSchedulerService.scheduleMass(masJobRequests);
 
     // Then
-    then(publisherService).should(times(2)).publishMasJob(eq(MAS_ID), any());
-    then(publisherService).should(times(2)).publishMasJob(eq(MAS_ID_ALT), any());
+    then(publisherService).should(times(2)).publishMasJob(eq(MAS_ID.replace(HANDLE, "")), any());
+    then(publisherService).should(times(2))
+        .publishMasJob(eq(MAS_ID_ALT.replace(HANDLE, "")), any());
     then(masJobRecordRepository).should().createNewMasJobRecord(anyList());
   }
 
@@ -382,7 +383,7 @@ class MasSchedulerServiceTest {
     masSchedulerService.scheduleMass(Set.of(masRequest));
 
     // Then
-    then(publisherService).should().publishMasJob(MAS_ID, expected);
+    then(publisherService).should().publishMasJob(MAS_ID.replace(HANDLE, ""), expected);
     then(masJobRecordRepository).should().createNewMasJobRecord(anyList());
   }
 
