@@ -1,7 +1,5 @@
 package eu.dissco.disscomasschedulerservice.service;
 
-import static eu.dissco.disscomasschedulerservice.repository.RepositoryUtils.DOI_STRING;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.jayway.jsonpath.JsonPath;
@@ -28,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -136,12 +135,10 @@ public class MasSchedulerService {
     var specimenTargets = masRequests.stream()
         .filter(masRequest -> masRequest.targetType().equals(MjrTargetType.DIGITAL_SPECIMEN))
         .map(MasJobRequest::targetId)
-        .map(id -> id.replace(DOI_STRING, ""))
         .collect(Collectors.toSet());
     var mediaTargets = masRequests.stream()
         .filter(masRequest -> masRequest.targetType().equals(MjrTargetType.MEDIA_OBJECT))
         .map(MasJobRequest::targetId)
-        .map(id -> id.replace(DOI_STRING, ""))
         .collect(Collectors.toSet());
     var targetMapSpecimens = new HashMap<>(specimenRepository.getSpecimens(specimenTargets));
     var targetMapMedia = new HashMap<>(mediaRepository.getMedia(mediaTargets));
@@ -149,7 +146,7 @@ public class MasSchedulerService {
     verifyTargetExists(mediaTargets, targetMapMedia, masRequests, failedMasJobRequests);
     return Stream.concat(targetMapSpecimens.entrySet().stream(), targetMapMedia.entrySet().stream())
         .filter(e -> e.getValue() != null)
-        .collect(Collectors.toMap(entry -> DOI_STRING + entry.getKey(), Map.Entry::getValue));
+        .collect(Collectors.toMap(Entry::getKey, Map.Entry::getValue));
   }
 
   private void verifyTargetExists(Set<String> targetIds, Map<String, JsonNode> targetMap,

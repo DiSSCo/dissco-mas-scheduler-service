@@ -1,5 +1,7 @@
 package eu.dissco.disscomasschedulerservice.controller;
 
+import static eu.dissco.disscomasschedulerservice.repository.RepositoryUtils.DOI_STRING;
+
 import eu.dissco.disscomasschedulerservice.Profiles;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
@@ -35,6 +37,11 @@ public class MasSchedulerController {
         masJobRequest.masId(),
         masJobRequest.targetId(),
         masJobRequest.agentId());
+    masJobRequest = new MasJobRequest(masJobRequest.masId(),
+        masJobRequest.targetId().replace(DOI_STRING, ""),
+        masJobRequest.batching(),
+        masJobRequest.agentId(),
+        masJobRequest.targetType());
     masSchedulerService.scheduleMass(Set.of(masJobRequest));
     log.info("MAS {} Scheduled", masJobRequest.masId());
     return ResponseEntity.status(HttpStatus.ACCEPTED).build();
