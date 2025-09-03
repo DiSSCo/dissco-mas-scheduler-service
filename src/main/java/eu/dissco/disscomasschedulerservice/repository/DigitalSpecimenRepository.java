@@ -1,7 +1,7 @@
 package eu.dissco.disscomasschedulerservice.repository;
 
 import static eu.dissco.disscomasschedulerservice.database.jooq.Tables.DIGITAL_SPECIMEN;
-import static eu.dissco.disscomasschedulerservice.repository.RepositoryUtils.DOI_STRING;
+import static eu.dissco.disscomasschedulerservice.service.ProxyUtils.DOI_STRING;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -30,7 +30,11 @@ public class DigitalSpecimenRepository {
         .from(DIGITAL_SPECIMEN)
         .where(DIGITAL_SPECIMEN.ID.in(targetIds))
         .and(DIGITAL_SPECIMEN.DELETED.isNull())
-        .fetchMap(DIGITAL_SPECIMEN.ID, this::mapToDigitalSpecimen);
+        .fetchMap(this::getKey, this::mapToDigitalSpecimen);
+  }
+
+  private String getKey(Record dbRecord) {
+    return DOI_STRING + dbRecord.get(DIGITAL_SPECIMEN.ID);
   }
 
   private JsonNode mapToDigitalSpecimen(Record dbRecord) {

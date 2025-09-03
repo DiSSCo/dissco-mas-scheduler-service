@@ -1,5 +1,7 @@
 package eu.dissco.disscomasschedulerservice.service;
 
+import static eu.dissco.disscomasschedulerservice.service.ProxyUtils.removeHandleProxy;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.jayway.jsonpath.JsonPath;
@@ -49,7 +51,7 @@ public class MasSchedulerService {
   private final DigitalMediaRepository mediaRepository;
   private final Environment environment;
 
-  public void scheduleMass(Set<MasJobRequest> masRequests)
+  public List<MasJobRecord> scheduleMass(Set<MasJobRequest> masRequests)
       throws UnprocessableEntityException, InvalidRequestException, NotFoundException {
     Set<MasJobRequest> failedMasJobRequests = new HashSet<>();
     var uniqueMasIds = masRequests.stream().map(MasJobRequest::masId).collect(Collectors.toSet());
@@ -62,6 +64,7 @@ public class MasSchedulerService {
     log.info("Publishing {} MAS jobs", filteredRequests.size());
     var masJobRecordMap = createMasJobRecords(filteredRequests, masMap);
     var failedMasJobIds = new ArrayList<String>();
+    var successfulMasJobs = new ArrayList<MasJobRecord>();
     for (var masRequest : filteredRequests) {
       var masJobRecord = masJobRecordMap.get(
           getMasJobRecordKey(masRequest.targetObject().get("@id").asText(), masRequest.masId()));
@@ -70,6 +73,7 @@ public class MasSchedulerService {
         var masTarget = new MasTarget(masRequest.targetObject(),
             masJobRecord.jobId(), masRequest.batching());
         publisherService.publishMasJob(mas.getOdsTopicName(), masTarget);
+        successfulMasJobs.add(masJobRecord);
       } catch (JsonProcessingException e) {
         log.error("Failed to send masRecord: {}  to rabbitMQ", mas.getId());
         failedMasJobIds.add(masJobRecord.jobId());
@@ -83,6 +87,7 @@ public class MasSchedulerService {
       }
     }
     processFailedJobs(failedMasJobIds, failedMasJobRequests);
+    return successfulMasJobs;
   }
 
   private void processFailedJobs(List<String> failedMasJobIds,
@@ -135,10 +140,12 @@ public class MasSchedulerService {
     var specimenTargets = masRequests.stream()
         .filter(masRequest -> masRequest.targetType().equals(MjrTargetType.DIGITAL_SPECIMEN))
         .map(MasJobRequest::targetId)
+        .map(ProxyUtils::removeDoiProxy)
         .collect(Collectors.toSet());
     var mediaTargets = masRequests.stream()
         .filter(masRequest -> masRequest.targetType().equals(MjrTargetType.MEDIA_OBJECT))
         .map(MasJobRequest::targetId)
+        .map(ProxyUtils::removeDoiProxy)
         .collect(Collectors.toSet());
     var targetMapSpecimens = new HashMap<>(specimenRepository.getSpecimens(specimenTargets));
     var targetMapMedia = new HashMap<>(mediaRepository.getMedia(mediaTargets));
@@ -204,6 +211,7 @@ public class MasSchedulerService {
             masRequest.batching(),
             masMap.get(masRequest.masId()).getOdsTimeToLive())).toList();
     masJobRecordRepository.createNewMasJobRecord(masJobRecordList);
+    log.info("Successfully scheduled jobs");
     return masJobRecordList.stream()
         .collect(Collectors.toMap(
             masJobRecord -> getMasJobRecordKey(masJobRecord.targetId(), masJobRecord.masId()),
@@ -229,7 +237,7 @@ public class MasSchedulerService {
   // We need a temp key to link the job request to the mas job record we just created
   // Unfortunately we can't use the mas job record id because that's not in the request
   private static String getMasJobRecordKey(String targetId, String masId) {
-    return targetId + "-" + masId;
+    return removeHandleProxy(targetId) + "-" + masId;
   }
 
   private boolean masCompliesToTarget(JsonNode jsonNode,

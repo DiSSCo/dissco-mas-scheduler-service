@@ -26,7 +26,7 @@ class MasSchedulerControllerTest {
   @Test
   void testScheduleMas() throws Exception {
     // When
-    controller.scheduleMas(givenMasJobRequest());
+    controller.scheduleMas(Set.of(givenMasJobRequest()));
 
     // Then
     then(service).should().scheduleMass(Set.of(givenMasJobRequest()));

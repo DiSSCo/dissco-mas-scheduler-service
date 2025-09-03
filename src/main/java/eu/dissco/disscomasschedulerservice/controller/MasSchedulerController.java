@@ -1,18 +1,17 @@
 package eu.dissco.disscomasschedulerservice.controller;
 
-import static eu.dissco.disscomasschedulerservice.repository.RepositoryUtils.DOI_STRING;
-
 import eu.dissco.disscomasschedulerservice.Profiles;
+import eu.dissco.disscomasschedulerservice.domain.MasJobRecord;
 import eu.dissco.disscomasschedulerservice.domain.MasJobRequest;
 import eu.dissco.disscomasschedulerservice.exception.InvalidRequestException;
 import eu.dissco.disscomasschedulerservice.exception.NotFoundException;
 import eu.dissco.disscomasschedulerservice.exception.UnprocessableEntityException;
 import eu.dissco.disscomasschedulerservice.service.MasSchedulerService;
+import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,20 +30,11 @@ public class MasSchedulerController {
   private final MasSchedulerService masSchedulerService;
 
   @PostMapping("")
-  public ResponseEntity<Void> scheduleMas(@RequestBody MasJobRequest masJobRequest)
+  public ResponseEntity<List<MasJobRecord>> scheduleMas(
+      @RequestBody Set<MasJobRequest> masJobRequests)
       throws UnprocessableEntityException, NotFoundException, InvalidRequestException {
-    log.info("Scheduling mas {} on digital object {}, requested by agent {}",
-        masJobRequest.masId(),
-        masJobRequest.targetId(),
-        masJobRequest.agentId());
-    masJobRequest = new MasJobRequest(masJobRequest.masId(),
-        masJobRequest.targetId().replace(DOI_STRING, ""),
-        masJobRequest.batching(),
-        masJobRequest.agentId(),
-        masJobRequest.targetType());
-    masSchedulerService.scheduleMass(Set.of(masJobRequest));
-    log.info("MAS {} Scheduled", masJobRequest.masId());
-    return ResponseEntity.status(HttpStatus.ACCEPTED).build();
+    log.info("Received {} requests to schedule MASs", masJobRequests.size());
+    return ResponseEntity.accepted().body(masSchedulerService.scheduleMass(masJobRequests));
   }
 
 }
