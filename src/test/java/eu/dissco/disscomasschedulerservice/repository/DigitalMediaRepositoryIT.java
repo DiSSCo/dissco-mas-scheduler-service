@@ -45,7 +45,7 @@ class DigitalMediaRepositoryIT extends BaseRepositoryIT {
         .put("dcterms:identifier", TARGET_ID_WITH_PROXY)
         .put("dcterms:created", formatter.format(CREATED))
         .put("ods:version", 1);
-    var expected = Map.of(TARGET_ID, media);
+    var expected = Map.of(TARGET_ID_WITH_PROXY, media);
 
     // When
     var result = mediaRepository.getMedia(Set.of(TARGET_ID));
