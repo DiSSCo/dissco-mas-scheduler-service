@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.util.unit.DataSize;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
@@ -30,10 +32,15 @@ public class WebClientConfiguration {
 
   @Bean(name = "handleClient")
   public WebClient handleClient() {
+    int size = (int) DataSize.ofMegabytes(1).toBytes();
+    var strategies = ExchangeStrategies.builder()
+        .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(size))
+        .build();
     return WebClient.builder()
         .clientConnector(new ReactorClientHttpConnector(HttpClient.create().followRedirect(true)))
         .baseUrl(properties.getHandleEndpoint())
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .exchangeStrategies(strategies)
         .build();
   }
 
