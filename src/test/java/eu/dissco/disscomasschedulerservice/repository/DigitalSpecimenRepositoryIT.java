@@ -46,7 +46,7 @@ class DigitalSpecimenRepositoryIT extends BaseRepositoryIT {
         .put("ods:midsLevel", (short) 1)
         .put("dcterms:created", formatter.format(CREATED))
         .put("ods:version", 1);
-    var expected = Map.of(TARGET_ID, specimen);
+    var expected = Map.of(TARGET_ID_WITH_PROXY, specimen);
 
     // When
     var result = specimenRepository.getSpecimens(Set.of(TARGET_ID));

@@ -2,7 +2,7 @@ package eu.dissco.disscomasschedulerservice.repository;
 
 import static eu.dissco.disscomasschedulerservice.database.jooq.Tables.DIGITAL_MEDIA_OBJECT;
 import static eu.dissco.disscomasschedulerservice.database.jooq.Tables.DIGITAL_SPECIMEN;
-import static eu.dissco.disscomasschedulerservice.repository.RepositoryUtils.DOI_STRING;
+import static eu.dissco.disscomasschedulerservice.service.ProxyUtils.DOI_STRING;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,7 +31,11 @@ public class DigitalMediaRepository {
         .from(DIGITAL_MEDIA_OBJECT)
         .where(DIGITAL_MEDIA_OBJECT.ID.in(targetIds))
         .and(DIGITAL_MEDIA_OBJECT.DELETED.isNull())
-        .fetchMap(DIGITAL_MEDIA_OBJECT.ID, this::mapToDigitalMedia);
+        .fetchMap(DigitalMediaRepository::getKey, this::mapToDigitalMedia);
+  }
+
+  private static String getKey(Record dbRecord) {
+    return DOI_STRING + dbRecord.get(DIGITAL_SPECIMEN.ID);
   }
 
   private JsonNode mapToDigitalMedia(Record dbRecord) {
