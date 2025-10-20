@@ -32,7 +32,7 @@ public class WebClientConfiguration {
 
   @Bean(name = "handleClient")
   public WebClient handleClient() {
-    int size = (int) DataSize.ofMegabytes(5).toBytes();
+    int size = (int) DataSize.ofMegabytes(1).toBytes();
     var strategies = ExchangeStrategies.builder()
         .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(size))
         .build();
