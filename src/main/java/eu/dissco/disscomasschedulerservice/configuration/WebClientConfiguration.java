@@ -2,8 +2,8 @@ package eu.dissco.disscomasschedulerservice.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import eu.dissco.disscomasschedulerservice.component.FdoRecordComponent;
+import eu.dissco.disscomasschedulerservice.properties.WebConnectionProperties;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -24,8 +24,7 @@ import reactor.netty.http.client.HttpClient;
 @RequiredArgsConstructor
 public class WebClientConfiguration {
 
-  @Value("${endpoint.handle-endpoint}")
-  private String handleEndpoint;
+  private final WebConnectionProperties properties;
   private final ObjectMapper mapper;
 
   @Bean
@@ -52,7 +51,7 @@ public class WebClientConfiguration {
     return WebClient.builder()
         .apply(oauth2Client.oauth2Configuration())
         .clientConnector(new ReactorClientHttpConnector(HttpClient.create().followRedirect(true)))
-        .baseUrl(handleEndpoint)
+        .baseUrl(properties.getHandleEndpoint())
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .exchangeStrategies(ExchangeStrategies
             .builder()

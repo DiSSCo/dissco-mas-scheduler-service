@@ -1,4 +1,4 @@
-package eu.dissco.disscomasschedulerservice.configuration;
+package eu.dissco.disscomasschedulerservice.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
