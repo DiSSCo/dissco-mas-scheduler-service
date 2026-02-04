@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ReactiveHttpOutputMessage;
@@ -27,9 +26,7 @@ import reactor.util.retry.Retry;
 @RequiredArgsConstructor
 public class HandleComponent {
 
-  @Qualifier("handleClient")
   private final WebClient handleClient;
-  private final TokenAuthenticator tokenAuthenticator;
   private final FdoRecordComponent fdoRecordComponent;
 
   public List<String> postHandle(int n) throws PidCreationException {
@@ -55,13 +52,11 @@ public class HandleComponent {
   }
 
   private <T> Mono<JsonNode> sendRequest(
-      BodyInserter<T, ReactiveHttpOutputMessage> requestBody) throws PidCreationException {
-    var token = "Bearer " + tokenAuthenticator.getToken();
+      BodyInserter<T, ReactiveHttpOutputMessage> requestBody) {
     return handleClient
         .post()
         .uri(uriBuilder -> uriBuilder.path("batch").build())
         .body(requestBody)
-        .header("Authorization", token)
         .acceptCharset(StandardCharsets.UTF_8)
         .retrieve()
         .onStatus(HttpStatus.UNAUTHORIZED::equals,

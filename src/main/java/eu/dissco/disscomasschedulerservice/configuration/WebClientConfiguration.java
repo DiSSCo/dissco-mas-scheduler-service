@@ -9,6 +9,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -21,26 +27,38 @@ public class WebClientConfiguration {
   private final WebConnectionProperties properties;
   private final ObjectMapper mapper;
 
-  @Bean(name = "tokenClient")
-  public WebClient tokenClient() {
-    return WebClient.builder()
-        .clientConnector(new ReactorClientHttpConnector(HttpClient.create()))
-        .baseUrl(properties.getTokenEndpoint())
-        .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+  @Bean
+  public OAuth2AuthorizedClientManager authorizedClientManager(
+      ClientRegistrationRepository clientRegistrationRepository,
+      OAuth2AuthorizedClientService clientService) {
+    var authorizedClientProvider = OAuth2AuthorizedClientProviderBuilder
+        .builder()
+        .refreshToken()
+        .clientCredentials()
         .build();
+    var authorizedClientManager = new AuthorizedClientServiceOAuth2AuthorizedClientManager(
+        clientRegistrationRepository, clientService
+    );
+    authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
+    return authorizedClientManager;
   }
 
-  @Bean(name = "handleClient")
-  public WebClient handleClient() {
-    int size = (int) DataSize.ofMegabytes(1).toBytes();
-    var strategies = ExchangeStrategies.builder()
-        .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(size))
-        .build();
+  @Bean
+  public WebClient handleClient(OAuth2AuthorizedClientManager authorizedClientManager) {
+    var oauth2Client = new ServletOAuth2AuthorizedClientExchangeFilterFunction(
+        authorizedClientManager);
+    oauth2Client.setDefaultClientRegistrationId("dissco");
     return WebClient.builder()
+        .apply(oauth2Client.oauth2Configuration())
         .clientConnector(new ReactorClientHttpConnector(HttpClient.create().followRedirect(true)))
         .baseUrl(properties.getHandleEndpoint())
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .exchangeStrategies(strategies)
+        .exchangeStrategies(ExchangeStrategies
+            .builder()
+            .codecs(codecs -> codecs
+                .defaultCodecs()
+                .maxInMemorySize((int) DataSize.ofMegabytes(1).toBytes()))
+            .build())
         .build();
   }
 
